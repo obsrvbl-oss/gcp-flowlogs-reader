@@ -1,0 +1,495 @@
+from datetime import datetime, timedelta
+from ipaddress import ip_address
+from io import StringIO
+from unittest import TestCase
+from unittest.mock import MagicMock, patch
+from tempfile import NamedTemporaryFile
+
+from google.cloud.logging import Client
+from google.cloud.logging.entries import StructEntry
+
+from gcp_flowlogs_reader.aggregation import aggregated_records
+import gcp_flowlogs_reader.__main__ as cli_module
+from gcp_flowlogs_reader import (
+    FlowRecord,
+    Reader,
+    InstanceDetails,
+    VpcDetails,
+    GeographicDetails,
+)
+
+SAMPLE_PAYLODS = [
+    {
+        'bytes_sent': '491',
+        'connection': {
+            'dest_ip': '192.0.2.2',
+            'dest_port': 3389.0,
+            'protocol': 6.0,
+            'src_ip': '198.51.100.75',
+            'src_port': 49444.0
+        },
+        'dest_instance': {
+            'project_id': 'yoyodyne-102010',
+            'region': 'us-west1',
+            'vm_name': 'vm-instance-01',
+            'zone': 'us-west1-a'
+        },
+        'dest_vpc': {
+            'project_id': 'yoyodyne-102010',
+            'subnetwork_name': 'yoyo-vpc-1',
+            'vpc_name': 'yoyo-vpc-1'
+        },
+        'end_time': '2018-04-03T13:47:38.401723960Z',
+        'packets_sent': '4',
+        'reporter': 'DEST',
+        'src_location': {
+            'city': 'Santa Teresa',
+            'continent': 'America',
+            'country': 'usa',
+            'region': 'California'
+        },
+        'start_time': '2018-04-03T13:47:37.301723960Z',
+        'rtt_msec': '61'
+    },
+    {
+        'bytes_sent': '756',
+        'connection': {
+            'dest_ip': '198.51.100.75',
+            'dest_port': 49444.0,
+            'protocol': 6.0,
+            'src_ip': '192.0.2.2',
+            'src_port': 3389.0
+        },
+        'dest_location': {
+            'city': 'Santa Teresa',
+            'continent': 'America',
+            'country': 'usa',
+            'region': 'California'
+        },
+        'end_time': '2018-04-03T13:47:33.937764566Z',
+        'packets_sent': '6',
+        'reporter': 'SRC',
+        'src_instance': {
+            'project_id': 'yoyodyne-102010',
+            'region': 'us-west1',
+            'vm_name': 'vm-instance-01',
+            'zone': 'us-west1-a'
+        },
+        'src_vpc': {
+            'project_id': 'yoyodyne-102010',
+            'subnetwork_name': 'yoyo-vpc-1',
+            'vpc_name': 'yoyo-vpc-1'
+        },
+        'start_time': '2018-04-03T13:47:32.805417512Z'
+    },
+    {
+        'bytes_sent': '1020',
+        'connection': {
+            'dest_ip': '192.0.2.3',
+            'dest_port': 65535.0,
+            'protocol': 6.0,
+            'src_ip': '192.0.2.2',
+            'src_port': 3389.0
+        },
+        'end_time': '2018-04-03T13:48:33.937764566Z',
+        'packets_sent': '20',
+        'reporter': 'SRC',
+        'src_instance': {
+            'project_id': 'yoyodyne-102010',
+            'region': 'us-west1',
+            'vm_name': 'vm-instance-01',
+            'zone': 'us-west1-a'
+        },
+        'src_vpc': {
+            'project_id': 'yoyodyne-102010',
+            'subnetwork_name': 'yoyo-vpc-1',
+            'vpc_name': 'yoyo-vpc-1'
+        },
+        'dest_instance': {
+            'project_id': 'yoyodyne-102010',
+            'region': 'us-west1',
+            'vm_name': 'vm-instance-02',
+            'zone': 'us-west1-a'
+        },
+        'dest_vpc': {
+            'project_id': 'yoyodyne-102010',
+            'subnetwork_name': 'yoyo-vpc-1',
+            'vpc_name': 'yoyo-vpc-1'
+        },
+        'start_time': '2018-04-03T13:47:31.805417512Z'
+    },
+]
+
+SAMPLE_ENTRIES = [StructEntry(x, None) for x in SAMPLE_PAYLODS]
+
+
+class MockIterator:
+    def __init__(self):
+        self.pages = (
+            [SAMPLE_ENTRIES[0], SAMPLE_ENTRIES[1]],
+            [SAMPLE_ENTRIES[2]],
+        )
+
+
+class FlowRecordTests(TestCase):
+    def test_init_outbound(self):
+        flow_record = FlowRecord(SAMPLE_ENTRIES[0])
+        for attr, expected in [
+            ('src_ip', ip_address('198.51.100.75')),
+            ('src_port', 49444),
+            ('dest_ip', ip_address('192.0.2.2')),
+            ('dest_port', 3389),
+            ('protocol', 6),
+            ('start_time', datetime(2018, 4, 3, 13, 47, 37, 301723)),
+            ('end_time', datetime(2018, 4, 3, 13, 47, 38, 401723)),
+            ('bytes_sent', 491),
+            ('packets_sent', 4),
+            ('rtt_msec', 61),
+            ('reporter', 'DEST'),
+            ('src_instance', None),
+            (
+                'dest_instance',
+                InstanceDetails(**SAMPLE_PAYLODS[0]['dest_instance'])
+            ),
+            ('src_vpc', None),
+            ('dest_vpc', VpcDetails(**SAMPLE_PAYLODS[0]['dest_vpc'])),
+            (
+                'src_location',
+                GeographicDetails(**SAMPLE_PAYLODS[0]['src_location'])
+            ),
+            ('dest_location', None),
+        ]:
+            with self.subTest(attr=attr):
+                actual = getattr(flow_record, attr)
+                self.assertEqual(actual, expected)
+                self.assertEqual(type(actual), type(expected))
+
+    def test_init_inbound(self):
+        flow_record = FlowRecord(SAMPLE_ENTRIES[1])
+        for attr, expected in [
+            ('src_ip', ip_address('192.0.2.2')),
+            ('src_port', 3389),
+            ('dest_ip', ip_address('198.51.100.75')),
+            ('dest_port', 49444),
+            ('protocol', 6),
+            ('start_time', datetime(2018, 4, 3, 13, 47, 32, 805417)),
+            ('end_time', datetime(2018, 4, 3, 13, 47, 33, 937764)),
+            ('bytes_sent', 756),
+            ('packets_sent', 6),
+            ('rtt_msec', None),
+            ('reporter', 'SRC'),
+            (
+                'src_instance',
+                InstanceDetails(**SAMPLE_PAYLODS[1]['src_instance'])
+            ),
+            ('dest_instance', None),
+            ('src_vpc', VpcDetails(**SAMPLE_PAYLODS[1]['src_vpc'])),
+            ('dest_vpc', None),
+            ('src_location', None),
+            (
+                'dest_location',
+                GeographicDetails(**SAMPLE_PAYLODS[1]['dest_location'])
+            ),
+        ]:
+            with self.subTest(attr=attr):
+                actual = getattr(flow_record, attr)
+                self.assertEqual(actual, expected)
+                self.assertEqual(type(actual), type(expected))
+
+    def test_eq(self):
+        self.assertEqual(
+            FlowRecord(SAMPLE_ENTRIES[0]), FlowRecord(SAMPLE_ENTRIES[0])
+        )
+        self.assertNotEqual(
+            FlowRecord(SAMPLE_ENTRIES[0]), FlowRecord(SAMPLE_ENTRIES[1])
+        )
+        self.assertNotEqual(
+            FlowRecord(SAMPLE_ENTRIES[0]), SAMPLE_ENTRIES[0]
+        )
+
+    def test_hash(self):
+        self.assertEqual(
+            hash(FlowRecord(SAMPLE_ENTRIES[0])),
+            hash(FlowRecord(SAMPLE_ENTRIES[0]))
+        )
+        self.assertNotEqual(
+            hash(FlowRecord(SAMPLE_ENTRIES[0])),
+            hash(FlowRecord(SAMPLE_ENTRIES[1]))
+        )
+
+    def test_repr(self):
+        actual = repr(FlowRecord(SAMPLE_ENTRIES[0]))
+        expected = '<FlowRecord 198.51.100.75:49444/6->192.0.2.2:3389/6>'
+        self.assertEqual(actual, expected)
+
+    def test_str(self):
+        actual = str(FlowRecord(SAMPLE_ENTRIES[0]))
+        expected = (
+            'src_ip: 198.51.100.75, '
+            'src_port: 49444, '
+            'dest_ip: 192.0.2.2, '
+            'dest_port: 3389, '
+            'protocol: 6, '
+            'start_time: 2018-04-03 13:47:37.301723, '
+            'end_time: 2018-04-03 13:47:38.401723, '
+            'bytes_sent: 491, '
+            'packets_sent: 4'
+        )
+        self.assertEqual(actual, expected)
+
+    def test_to_dict(self):
+        flow_dict = FlowRecord(SAMPLE_ENTRIES[0]).to_dict()
+        for attr, expected in [
+            ('src_ip', ip_address('198.51.100.75')),
+            ('src_port', 49444),
+            ('dest_ip', ip_address('192.0.2.2')),
+            ('dest_port', 3389),
+            ('protocol', 6),
+            ('start_time', datetime(2018, 4, 3, 13, 47, 37, 301723)),
+            ('end_time', datetime(2018, 4, 3, 13, 47, 38, 401723)),
+            ('bytes_sent', 491),
+            ('packets_sent', 4),
+            ('rtt_msec', 61),
+            ('reporter', 'DEST'),
+            ('src_instance', None),
+            ('dest_instance', SAMPLE_PAYLODS[0]['dest_instance']),
+            ('src_vpc', None),
+            ('dest_vpc', SAMPLE_PAYLODS[0]['dest_vpc']),
+            ('src_location', SAMPLE_PAYLODS[0]['src_location']),
+            ('dest_location', None),
+        ]:
+            with self.subTest(attr=attr):
+                actual = flow_dict[attr]
+                self.assertEqual(actual, expected)
+
+    def test_from_payload(self):
+        self.assertEqual(
+            FlowRecord.from_payload(SAMPLE_PAYLODS[0]),
+            FlowRecord(SAMPLE_ENTRIES[0]),
+        )
+
+
+@patch(
+    'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client', autospec=True
+)
+class ReaderTests(TestCase):
+    def test_init_with_client(self, mock_Client):
+        logging_client = MagicMock(Client)
+        logging_client.project = 'yoyodyne-102010'
+        reader = Reader(logging_client=logging_client)
+        self.assertEqual(mock_Client.call_count, 0)
+        self.assertIs(reader.logging_client, logging_client)
+
+    def test_init_with_credentials(self, mock_Client):
+        with NamedTemporaryFile() as temp_file:
+            path = temp_file.name
+            Reader(service_account_json=path, project='yoyodyne-102010')
+
+        mock_Client.from_service_account_json.assert_called_once_with(
+            path, project='yoyodyne-102010'
+        )
+
+    def test_init_with_environment(self, mock_Client):
+        mock_Client.return_value.project = 'yoyodyne-102010'
+        Reader(project='yoyodyne-102010')
+        mock_Client.assert_called_once_with(project='yoyodyne-102010')
+
+    def test_init_log_name(self, mock_Client):
+        mock_Client.return_value.project = 'yoyodyne-102010'
+
+        # Nothing specified - log name is derived from the project name
+        normal_reader = Reader()
+        self.assertEqual(
+            normal_reader.log_name,
+            'projects/yoyodyne-102010/logs/compute.googleapis.com%2Fvpc_flows'
+        )
+
+        # Custom name specified - log name is taken directly
+        custom_reader = Reader(log_name='custom-log')
+        self.assertEqual(custom_reader.log_name, 'custom-log')
+
+    def test_init_times(self, mock_Client):
+        mock_Client.return_value.project = 'yoyodyne-102010'
+        earlier = datetime(2018, 4, 3, 9, 51, 22)
+        later = datetime(2018, 4, 3, 10, 51, 22)
+
+        # End time specified - start defaults to one hour back
+        reader = Reader(end_time=later)
+        self.assertEqual(reader.end_time, later)
+        self.assertEqual(reader.start_time, earlier)
+
+        # Start time specified - end defaults to "now"
+        reader = Reader(start_time=earlier)
+        self.assertIsNotNone(reader.end_time)
+        self.assertNotEqual(reader.end_time, later)
+        self.assertEqual(reader.start_time, earlier)
+
+    def test_iteration(self, mock_Client):
+        mock_Client.return_value.project = 'yoyodyne-102010'
+        mock_Client.return_value.list_entries.return_value = MockIterator()
+
+        earlier = datetime(2018, 4, 3, 9, 51, 22)
+        later = datetime(2018, 4, 3, 10, 51, 33)
+        reader = Reader(start_time=earlier, end_time=later, log_name='my_log')
+
+        # Test for flows getting created
+        actual = list(reader)
+        expected = [FlowRecord(x) for x in SAMPLE_ENTRIES]
+        self.assertEqual(actual, expected)
+
+        # Test the client getting called correctly
+        expression = (
+            'resource.type="gce_subnetwork" AND '
+            'logName="my_log" AND '
+            'Timestamp >= "2018-04-03T09:50:22Z" AND '
+            'Timestamp < "2018-04-03T10:52:33Z" AND '
+            'jsonPayload.start_time >= "2018-04-03T09:51:22Z" AND '
+            'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
+        )
+        mock_Client.return_value.list_entries.assert_called_once_with(
+            filter_=expression, page_size=1000
+        )
+
+
+class AggregationTests(TestCase):
+    def test_basic(self):
+        flow_1 = FlowRecord(SAMPLE_ENTRIES[1])
+        flow_1.start_time -= timedelta(days=1)
+
+        flow_2 = FlowRecord(SAMPLE_ENTRIES[1])
+        flow_2.end_time += timedelta(days=1)
+
+        input_records = [flow_1, flow_2]
+        output_records = list(aggregated_records(input_records))
+        self.assertEqual(len(output_records), 1)
+        actual = output_records[0]
+        expected = (
+            ip_address('192.0.2.2'),
+            ip_address('198.51.100.75'),
+            3389,
+            49444,
+            6,
+            12,  # Packets doubled
+            1512,  # Bytes doubled
+            datetime(2018, 4, 2, 13, 47, 32, 805417),  # Earliest start
+            datetime(2018, 4, 4, 13, 47, 33, 937764)  # Latest finish
+        )
+        self.assertEqual(actual, expected)
+
+    def test_custom_key(self):
+        input_records = [FlowRecord(x) for x in SAMPLE_ENTRIES]
+        key_fields = ['src_port', 'protocol']
+        output_records = sorted(
+            aggregated_records(input_records, key_fields),
+            key=lambda x: x.src_port
+        )
+        self.assertEqual(len(output_records), 2)
+        actual = output_records[0]
+        expected = (
+            3389,
+            6,
+            26,
+            1776,
+            datetime(2018, 4, 3, 13, 47, 31, 805417),
+            datetime(2018, 4, 3, 13, 48, 33, 937764)
+        )
+        self.assertEqual(tuple(actual), expected)
+
+
+class MainCLITests(TestCase):
+    def setUp(self):
+        patch_path = (
+            'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
+        )
+        with patch(patch_path, autospec=True) as mock_Client:
+            mock_Client.return_value.project = 'yoyodyne-102010'
+            mock_Client.return_value.list_entries.return_value = MockIterator()
+            self.reader = Reader()
+
+    def test_action_print(self):
+        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            cli_module.action_print(self.reader)
+            actual = mock_stdout.getvalue()
+        expected = (
+            'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
+            'start_time\tend_time\tbytes_sent\tpackets_sent\n'
+            '198.51.100.75\t192.0.2.2\t49444\t3389\t6\t2018-04-03T13:47:37\t'
+            '2018-04-03T13:47:38\t491\t4\n'
+            '192.0.2.2\t198.51.100.75\t3389\t49444\t6\t2018-04-03T13:47:32\t'
+            '2018-04-03T13:47:33\t756\t6\n'
+            '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
+            '2018-04-03T13:48:33\t1020\t20\n'
+        )
+        self.assertEqual(actual, expected)
+
+    def test_action_print_limit(self):
+        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            cli_module.action_print(self.reader, 1)
+            actual = mock_stdout.getvalue()
+        expected = (
+            'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
+            'start_time\tend_time\tbytes_sent\tpackets_sent\n'
+            '198.51.100.75\t192.0.2.2\t49444\t3389\t6\t2018-04-03T13:47:37\t'
+            '2018-04-03T13:47:38\t491\t4\n'
+        )
+        self.assertEqual(actual, expected)
+
+    def test_action_print_error(self):
+        with self.assertRaises(RuntimeError):
+            cli_module.action_print(self.reader, 1, 2)
+
+    def test_action_ipset(self):
+        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            cli_module.action_ipset(self.reader)
+            actual = mock_stdout.getvalue()
+        expected = (
+            '192.0.2.2\n'
+            '192.0.2.3\n'
+            '198.51.100.75\n'
+        )
+        self.assertEqual(actual, expected)
+
+    def test_action_findip(self):
+        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            cli_module.action_findip(self.reader, '192.0.2.3')
+            actual = mock_stdout.getvalue()
+        expected = (
+            'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
+            'start_time\tend_time\tbytes_sent\tpackets_sent\n'
+            '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
+            '2018-04-03T13:48:33\t1020\t20\n'
+        )
+        self.assertEqual(actual, expected)
+
+    def test_action_aggregate(self):
+        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            cli_module.action_aggregate(self.reader)
+            actual_len = len(mock_stdout.getvalue().splitlines())
+        expected_len = 4
+        self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
+
+    def test_main_error(self):
+        with patch('sys.stderr', new_callable=StringIO) as mock_stderr:
+            cli_module.main(['frobulate'])
+            actual_len = len(mock_stderr.getvalue().splitlines())
+        expected_len = 2
+        self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
+
+    def test_main(self):
+        patch_path = (
+            'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
+        )
+        with patch(patch_path, autospec=True) as mock_Client:
+            mock_Client.return_value.project = 'yoyodyne-102010'
+            mock_Client.return_value.list_entries.return_value = MockIterator()
+
+            argv = [
+                '--start-time', '2018-04-03 12:00:00',
+                '--end-time', '2018-04-03 13:00:00',
+                '--filters', 'jsonPayload.src_ip="198.51.100.1"',
+            ]
+            with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+                cli_module.main(argv)
+                actual_len = len(mock_stdout.getvalue().splitlines())
+        expected_len = 4
+        self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
