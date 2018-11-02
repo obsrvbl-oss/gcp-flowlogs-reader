@@ -39,7 +39,7 @@ SAMPLE_PAYLODS = [
             'subnetwork_name': 'yoyo-vpc-1',
             'vpc_name': 'yoyo-vpc-1'
         },
-        'end_time': '2018-04-03T13:47:38.401723960Z',
+        'end_time': '2018-04-03T13:47:38.401Z',
         'packets_sent': '4',
         'reporter': 'DEST',
         'src_location': {
@@ -140,8 +140,8 @@ class FlowRecordTests(TestCase):
             ('dest_ip', ip_address('192.0.2.2')),
             ('dest_port', 3389),
             ('protocol', 6),
-            ('start_time', datetime(2018, 4, 3, 13, 47, 37, 301723)),
-            ('end_time', datetime(2018, 4, 3, 13, 47, 38, 401723)),
+            ('start_time', datetime(2018, 4, 3, 13, 47, 37)),
+            ('end_time', datetime(2018, 4, 3, 13, 47, 38)),
             ('bytes_sent', 491),
             ('packets_sent', 4),
             ('rtt_msec', 61),
@@ -172,8 +172,8 @@ class FlowRecordTests(TestCase):
             ('dest_ip', ip_address('198.51.100.75')),
             ('dest_port', 49444),
             ('protocol', 6),
-            ('start_time', datetime(2018, 4, 3, 13, 47, 32, 805417)),
-            ('end_time', datetime(2018, 4, 3, 13, 47, 33, 937764)),
+            ('start_time', datetime(2018, 4, 3, 13, 47, 32)),
+            ('end_time', datetime(2018, 4, 3, 13, 47, 33)),
             ('bytes_sent', 756),
             ('packets_sent', 6),
             ('rtt_msec', None),
@@ -230,8 +230,8 @@ class FlowRecordTests(TestCase):
             'dest_ip: 192.0.2.2, '
             'dest_port: 3389, '
             'protocol: 6, '
-            'start_time: 2018-04-03 13:47:37.301723, '
-            'end_time: 2018-04-03 13:47:38.401723, '
+            'start_time: 2018-04-03 13:47:37, '
+            'end_time: 2018-04-03 13:47:38, '
             'bytes_sent: 491, '
             'packets_sent: 4'
         )
@@ -245,8 +245,8 @@ class FlowRecordTests(TestCase):
             ('dest_ip', ip_address('192.0.2.2')),
             ('dest_port', 3389),
             ('protocol', 6),
-            ('start_time', datetime(2018, 4, 3, 13, 47, 37, 301723)),
-            ('end_time', datetime(2018, 4, 3, 13, 47, 38, 401723)),
+            ('start_time', datetime(2018, 4, 3, 13, 47, 37)),
+            ('end_time', datetime(2018, 4, 3, 13, 47, 38)),
             ('bytes_sent', 491),
             ('packets_sent', 4),
             ('rtt_msec', 61),
