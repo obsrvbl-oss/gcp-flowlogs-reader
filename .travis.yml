@@ -8,11 +8,11 @@ python:
     - "pypy"
 
 install:
-    - pip install --upgrade setuptools coveralls
+    - pip install --upgrade setuptools coverage
     - python setup.py develop
 
 script:
     - coverage run --source=gcp_flowlogs_reader setup.py test
 
-after_success:
-    - coveralls
+notifications:
+    - email: false
