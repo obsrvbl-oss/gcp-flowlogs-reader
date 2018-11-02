@@ -74,7 +74,7 @@ class FlowRecord:
                 setattr(self, attr, value)
 
     def _get_dt(self, value):
-        return datetime.strptime(value[:26], '%Y-%m-%dT%H:%M:%S.%f')
+        return datetime.strptime(value[:19], '%Y-%m-%dT%H:%M:%S')
 
     def __eq__(self, other):
         try:
