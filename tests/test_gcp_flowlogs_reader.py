@@ -7,6 +7,7 @@ from tempfile import NamedTemporaryFile
 
 from google.cloud.logging import Client
 from google.cloud.logging.entries import StructEntry
+from google.oauth2.service_account import Credentials
 
 from gcp_flowlogs_reader.aggregation import aggregated_records
 import gcp_flowlogs_reader.__main__ as cli_module
@@ -280,7 +281,28 @@ class ReaderTests(TestCase):
         self.assertEqual(mock_Client.call_count, 0)
         self.assertIs(reader.logging_client, logging_client)
 
-    def test_init_with_credentials(self, mock_Client):
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
+    )
+    def test_init_with_credentials_info(self, mock_Credentials, mock_Client):
+        creds = MagicMock(Credentials)
+        creds.project_id = 'proj1'
+        mock_Credentials.from_service_account_info.return_value = creds
+
+        client = MagicMock(Client)
+        client.project = 'yoyodyne-102010'
+        mock_Client.return_value = client
+
+        Reader(service_account_info={'foo': 1})
+
+        mock_Credentials.from_service_account_info.assert_called_once_with(
+            {'foo': 1}
+        )
+        mock_Client.assert_called_once_with(
+            project='proj1', credentials=creds
+        )
+
+    def test_init_with_credentials_json(self, mock_Client):
         with NamedTemporaryFile() as temp_file:
             path = temp_file.name
             Reader(service_account_json=path, project='yoyodyne-102010')

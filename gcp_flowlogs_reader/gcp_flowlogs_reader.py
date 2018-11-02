@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from ipaddress import ip_address
 
 from google.cloud import logging as gcp_logging
+from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
 
@@ -128,10 +129,11 @@ class Reader:
         filters=None,
         logging_client=None,
         service_account_json=None,
+        service_account_info=None,
         page_size=1000,
         **kwargs
     ):
-        # If a Client insteance is provided, use it.
+        # If a Client instance is provided, use it.
         if logging_client:
             self.logging_client = logging_client
         # If a service account JSON file was provided, try it.
@@ -139,13 +141,25 @@ class Reader:
             self.logging_client = gcp_logging.Client.from_service_account_json(
                 service_account_json, **kwargs
             )
+        elif service_account_info:
+            gcp_credentials = Credentials.from_service_account_info(
+                service_account_info
+            )
+
+            # use the project specified in the credentials
+            client_args = kwargs.copy()
+            client_args['project'] = gcp_credentials.project_id
+
+            self.logging_client = gcp_logging.Client(
+                credentials=gcp_credentials, **client_args
+            )
         # Failing that, use the GOOGLE_APPLICATION_CREDENTIALS environment
         # variable.
         else:
             self.logging_client = gcp_logging.Client(**kwargs)
 
         # The default log name is based on the project name, but it can
-        # be overriden by providing it explicitly.
+        # be overridden by providing it explicitly.
         if log_name:
             self.log_name = log_name
         else:

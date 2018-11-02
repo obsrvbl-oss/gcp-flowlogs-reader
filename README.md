@@ -141,3 +141,4 @@ You may pass in these keywords as arguments to affect what flows are returned:
 * `filters` - defaults the the standard log name
 * `logging_client` - a custom `google.cloud.logging.Client` instance
 * `service_account_json` - the path to a service account JSON credential file
+* `service_account_info` - the service account information parsed from a credential file. See [`from_service_account`](https://google-auth.readthedocs.io/en/latest/reference/google.oauth2.service_account.html#google.oauth2.service_account.Credentials.from_service_account_info) for more information.
