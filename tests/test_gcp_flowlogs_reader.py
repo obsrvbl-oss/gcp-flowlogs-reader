@@ -393,8 +393,8 @@ class AggregationTests(TestCase):
             6,
             12,  # Packets doubled
             1512,  # Bytes doubled
-            datetime(2018, 4, 2, 13, 47, 32, 805417),  # Earliest start
-            datetime(2018, 4, 4, 13, 47, 33, 937764)  # Latest finish
+            datetime(2018, 4, 2, 13, 47, 32),  # Earliest start
+            datetime(2018, 4, 4, 13, 47, 33)  # Latest finish
         )
         self.assertEqual(actual, expected)
 
@@ -412,8 +412,8 @@ class AggregationTests(TestCase):
             6,
             26,
             1776,
-            datetime(2018, 4, 3, 13, 47, 31, 805417),
-            datetime(2018, 4, 3, 13, 48, 33, 937764)
+            datetime(2018, 4, 3, 13, 47, 31),
+            datetime(2018, 4, 3, 13, 48, 33)
         )
         self.assertEqual(tuple(actual), expected)
 
