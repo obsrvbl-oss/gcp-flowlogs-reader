@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='gcp_flowlogs_reader',
-    version='0.2',
+    version='0.3',
     license='Apache',
     url='https://github.com/obsrvbl/gcp-flowlogs-reader',
 
@@ -23,6 +23,7 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
     entry_points={
         'console_scripts': [
