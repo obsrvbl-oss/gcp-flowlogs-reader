@@ -40,7 +40,7 @@ class FlowRecord:
     ]
 
     def __init__(self, entry):
-        flow_payload = entry.payload
+        flow_payload = entry.payload or entry.log_name
         connection = flow_payload['connection']
         self.src_ip = ip_address(connection['src_ip'])
         self.src_port = int(connection['src_port'])
@@ -147,8 +147,8 @@ class Reader:
             )
 
             # use the project specified in the credentials
-            client_args = kwargs.copy()
-            client_args['project'] = gcp_credentials.project_id
+            client_args = {'project': gcp_credentials.project_id}
+            client_args.update(kwargs)
 
             self.logging_client = gcp_logging.Client(
                 credentials=gcp_credentials, **client_args

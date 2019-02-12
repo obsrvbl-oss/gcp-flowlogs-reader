@@ -302,6 +302,32 @@ class ReaderTests(TestCase):
             project='proj1', credentials=creds
         )
 
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
+    )
+    def test_init_with_credentials_info_and_project(
+        self, mock_Credentials, mock_Client
+    ):
+        # The credentials file specifies one project_id
+        creds = MagicMock(Credentials)
+        creds.project_id = 'proj1'
+        mock_Credentials.from_service_account_info.return_value = creds
+
+        # The client has another one, which will be ignored
+        client = MagicMock(Client)
+        client.project = 'proj2'
+        mock_Client.return_value = client
+
+        # The request is for a third one, which we'll use
+        Reader(service_account_info={'foo': 1}, project='proj3')
+
+        mock_Credentials.from_service_account_info.assert_called_once_with(
+            {'foo': 1}
+        )
+        mock_Client.assert_called_once_with(
+            project='proj3', credentials=creds
+        )
+
     def test_init_with_credentials_json(self, mock_Client):
         with NamedTemporaryFile() as temp_file:
             path = temp_file.name

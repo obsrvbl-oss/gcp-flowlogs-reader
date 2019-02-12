@@ -1,17 +1,19 @@
-language: python
+dist: "xenial"
+language: "python"
 
 python:
     - "3.4"
     - "3.5"
     - "3.6"
-    - "3.7-dev"
+    - "3.7"
 
 install:
-    - pip install --upgrade setuptools coverage
+    - pip install --upgrade setuptools coverage flake8
     - python setup.py develop
 
 script:
     - coverage run --source=gcp_flowlogs_reader setup.py test
+    - flake8 .
 
 notifications:
     - email: false
