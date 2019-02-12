@@ -40,7 +40,7 @@ class FlowRecord:
     ]
 
     def __init__(self, entry):
-        flow_payload = entry.payload
+        flow_payload = entry.payload or entry.log_name
         connection = flow_payload['connection']
         self.src_ip = ip_address(connection['src_ip'])
         self.src_port = int(connection['src_port'])
