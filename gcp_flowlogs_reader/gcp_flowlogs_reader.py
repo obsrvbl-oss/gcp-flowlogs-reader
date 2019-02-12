@@ -147,8 +147,8 @@ class Reader:
             )
 
             # use the project specified in the credentials
-            client_args = kwargs.copy()
-            client_args['project'] = gcp_credentials.project_id
+            client_args = {'project': gcp_credentials.project_id}
+            client_args.update(kwargs)
 
             self.logging_client = gcp_logging.Client(
                 credentials=gcp_credentials, **client_args
