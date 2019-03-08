@@ -146,7 +146,6 @@ class Reader:
             gcp_credentials = Credentials.from_service_account_info(
                 service_account_info
             )
-
             # use the project specified in the credentials
             client_args = {'project': gcp_credentials.project_id}
             client_args.update(kwargs)
@@ -154,22 +153,26 @@ class Reader:
             self.logging_client = gcp_logging.Client(
                 credentials=gcp_credentials, **client_args
             )
-
         # Failing that, use the GOOGLE_APPLICATION_CREDENTIALS environment
         # variable.
         else:
             self.logging_client = gcp_logging.Client(**kwargs)
 
-        # The default log name is based on the project name, but it can
-        # be overridden by providing it explicitly.
-        if log_name:
-            self.log_name = log_name
-        else:
-            self.log_name = BASE_LOG_NAME.format(self.logging_client.project)
-
         # capture project list, each project requires log view permissions
         if project_list:
             self.project_list = project_list
+            self.log_list = [
+                BASE_LOG_NAME.format(log_elm) for log_elm in self.project_list
+            ]
+        else:
+            self.log_list = [
+                BASE_LOG_NAME.format(self.logging_client.project)
+            ]
+
+        # The default list of logs is based on the project name and
+        # project list, but it can be overridden by providing it explicitly.
+        if log_name:
+            self.log_list = [log_name]
 
         # If no time bounds are given, use the last hour.
         self.end_time = end_time or datetime.utcnow()
@@ -197,9 +200,14 @@ class Reader:
         payload_start = self._format_dt(self.start_time)
         payload_end = self._format_dt(self.end_time)
 
+        log_filters = [
+            'logName="{}"'.format(log_elm) for log_elm in self.log_list
+        ]
+        full_log_filter = ' OR '.join(log_filters)
+
         filters = self.filters[:] + [
             'resource.type="gce_subnetwork"',
-            'logName="{}"'.format(self.log_name),
+            '({})'.format(full_log_filter),
             'Timestamp >= "{}"'.format(timestamp_start),
             'Timestamp < "{}"'.format(timestamp_end),
             'jsonPayload.start_time >= "{}"'.format(payload_start),

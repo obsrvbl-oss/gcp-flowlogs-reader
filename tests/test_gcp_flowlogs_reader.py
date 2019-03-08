@@ -342,19 +342,19 @@ class ReaderTests(TestCase):
         Reader(project='yoyodyne-102010')
         mock_Client.assert_called_once_with(project='yoyodyne-102010')
 
-    def test_init_log_name(self, mock_Client):
-        mock_Client.return_value.project = 'yoyodyne-102010'
+    def test_init_log_list(self, mock_Client):
+        mock_Client.return_value.project = 'yoyodyne-1020'
 
         # Nothing specified - log name is derived from the project name
         normal_reader = Reader()
         self.assertEqual(
-            normal_reader.log_name,
-            'projects/yoyodyne-102010/logs/compute.googleapis.com%2Fvpc_flows'
+            normal_reader.log_list,
+            ['projects/yoyodyne-1020/logs/compute.googleapis.com%2Fvpc_flows']
         )
 
-        # Custom name specified - log name is taken directly
+        # Custom name specified - log name is added to log list
         custom_reader = Reader(log_name='custom-log')
-        self.assertEqual(custom_reader.log_name, 'custom-log')
+        self.assertEqual(custom_reader.log_list, ['custom-log'])
 
     def test_init_times(self, mock_Client):
         mock_Client.return_value.project = 'yoyodyne-102010'
@@ -388,7 +388,7 @@ class ReaderTests(TestCase):
         # Test the client getting called correctly
         expression = (
             'resource.type="gce_subnetwork" AND '
-            'logName="my_log" AND '
+            '(logName="my_log") AND '
             'Timestamp >= "2018-04-03T09:50:22Z" AND '
             'Timestamp < "2018-04-03T10:52:33Z" AND '
             'jsonPayload.start_time >= "2018-04-03T09:51:22Z" AND '
@@ -420,7 +420,6 @@ class ReaderTests(TestCase):
         reader = Reader(
             start_time=earlier,
             end_time=later,
-            log_name='my_log',
             service_account_info={'foo': 1},
             project_list=project_list
         )
@@ -440,7 +439,12 @@ class ReaderTests(TestCase):
         # Test the client getting called correctly with multiple projects
         expression = (
             'resource.type="gce_subnetwork" AND '
-            'logName="my_log" AND '
+            '(logName="projects/proj1/logs/'
+            'compute.googleapis.com%2Fvpc_flows" OR '
+            'logName="projects/proj2/logs/'
+            'compute.googleapis.com%2Fvpc_flows" OR '
+            'logName="projects/proj3/logs/'
+            'compute.googleapis.com%2Fvpc_flows") AND '
             'Timestamp >= "2018-04-03T09:50:22Z" AND '
             'Timestamp < "2018-04-03T10:52:33Z" AND '
             'jsonPayload.start_time >= "2018-04-03T09:51:22Z" AND '
@@ -448,6 +452,40 @@ class ReaderTests(TestCase):
         )
         mock_Client.return_value.list_entries.assert_called_once_with(
             filter_=expression, page_size=1000, projects=project_list
+        )
+
+    def test_log_list(self, mock_Client):
+        mock_Client.return_value.project = 'yoyodyne-102010'
+        mock_Client.return_value.list_entries.return_value = MockIterator()
+
+        earlier = datetime(2018, 4, 3, 9, 51, 22)
+        later = datetime(2018, 4, 3, 10, 51, 33)
+        reader = Reader(
+            start_time=earlier,
+            end_time=later,
+            log_name='my_log',
+            project_list=['yoyodyne-102010', 'proj2'],
+        )
+        # explicit log overwrites project_list
+        self.assertEqual(reader.log_list, ['my_log'])
+        reader = Reader(
+            start_time=earlier,
+            end_time=later,
+            project_list=['yoyodyne-102010', 'proj2'],
+        )
+
+        # project_list includes multiple logs
+        log_string = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
+        self.assertEqual(
+            reader.log_list,
+            [log_string.format('yoyodyne-102010'), log_string.format('proj2')]
+        )
+
+        # no project_list uses client list
+        reader = Reader(start_time=earlier, end_time=later)
+        self.assertEqual(
+            reader.log_list,
+            [log_string.format('yoyodyne-102010')]
         )
 
 
