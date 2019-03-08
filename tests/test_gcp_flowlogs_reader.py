@@ -401,12 +401,8 @@ class ReaderTests(TestCase):
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
     )
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager_client',
-        autospec=True
-    )
     def test_multiple_projects(
-            self, mock_Resource_Manager, mock_Credentials, mock_Client
+            self, mock_Credentials, mock_Client
     ):
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
@@ -417,23 +413,16 @@ class ReaderTests(TestCase):
         log_client.list_entries.return_value = MockIterator()
         mock_Client.return_value = log_client
 
-        resource_client = MagicMock()
-        mock_project1 = MagicMock(project_id='proj1')
-        mock_project2 = MagicMock(project_id='proj2')
-        mock_project3 = MagicMock(project_id='proj3')
-        resource_client.list_projects.return_value = [
-            mock_project1, mock_project2, mock_project3
-        ]
-        project_list = ['proj1', 'proj2', 'proj3']
-        mock_Resource_Manager.side_effect = [resource_client]
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
 
+        project_list = ['proj1', 'proj2', 'proj3']
         reader = Reader(
             start_time=earlier,
             end_time=later,
             log_name='my_log',
-            service_account_info={'foo': 1}
+            service_account_info={'foo': 1},
+            project_list=project_list
         )
 
         mock_Credentials.from_service_account_info.assert_called_once_with(
