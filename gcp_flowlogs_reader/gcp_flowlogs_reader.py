@@ -2,7 +2,9 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from ipaddress import ip_address
 
+from google.api_core.exceptions import GoogleAPIError
 from google.cloud import logging as gcp_logging
+from google.cloud.resource_manager import Client as resource_manager_client
 from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
@@ -127,6 +129,7 @@ class Reader:
         start_time=None,
         end_time=None,
         filters=None,
+        collect_multiple_projects=True,
         logging_client=None,
         service_account_json=None,
         service_account_info=None,
@@ -153,6 +156,16 @@ class Reader:
             self.logging_client = gcp_logging.Client(
                 credentials=gcp_credentials, **client_args
             )
+
+            # capture project list, each project requires log view permissions
+            try:
+                client = resource_manager_client(credentials=gcp_credentials)
+                projects = [x.project_id for x in client.list_projects()]
+                if collect_multiple_projects:
+                    self.project_list = projects
+            except GoogleAPIError:  # no permission to collect other projects
+                pass
+
         # Failing that, use the GOOGLE_APPLICATION_CREDENTIALS environment
         # variable.
         else:
@@ -202,7 +215,8 @@ class Reader:
         expression = ' AND '.join(filters)
 
         iterator = self.logging_client.list_entries(
-            filter_=expression, page_size=self.page_size
+            filter_=expression, page_size=self.page_size,
+            projects=getattr(self, 'project_list', None)
         )
         for page in iterator.pages:
             for flow_entry in page:

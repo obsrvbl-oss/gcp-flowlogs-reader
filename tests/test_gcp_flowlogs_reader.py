@@ -395,7 +395,70 @@ class ReaderTests(TestCase):
             'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
         )
         mock_Client.return_value.list_entries.assert_called_once_with(
-            filter_=expression, page_size=1000
+            filter_=expression, page_size=1000, projects=None
+        )
+
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
+    )
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager_client',
+        autospec=True
+    )
+    def test_multiple_projects(
+            self, mock_Resource_Manager, mock_Credentials, mock_Client
+    ):
+        creds = MagicMock(Credentials)
+        creds.project_id = 'proj1'
+        mock_Credentials.from_service_account_info.return_value = creds
+
+        log_client = MagicMock(Client)
+        log_client.project = 'yoyodyne-102010'
+        log_client.list_entries.return_value = MockIterator()
+        mock_Client.return_value = log_client
+
+        resource_client = MagicMock()
+        mock_project1 = MagicMock(project_id='proj1')
+        mock_project2 = MagicMock(project_id='proj2')
+        mock_project3 = MagicMock(project_id='proj3')
+        resource_client.list_projects.return_value = [
+            mock_project1, mock_project2, mock_project3
+        ]
+        project_list = ['proj1', 'proj2', 'proj3']
+        mock_Resource_Manager.side_effect = [resource_client]
+        earlier = datetime(2018, 4, 3, 9, 51, 22)
+        later = datetime(2018, 4, 3, 10, 51, 33)
+
+        reader = Reader(
+            start_time=earlier,
+            end_time=later,
+            log_name='my_log',
+            service_account_info={'foo': 1}
+        )
+
+        mock_Credentials.from_service_account_info.assert_called_once_with(
+            {'foo': 1}
+        )
+        mock_Client.assert_called_once_with(
+            project='proj1', credentials=creds
+        )
+
+        # Test for flows getting created
+        actual = list(reader)
+        expected = [FlowRecord(x) for x in SAMPLE_ENTRIES]
+        self.assertEqual(actual, expected)
+
+        # Test the client getting called correctly with multiple projects
+        expression = (
+            'resource.type="gce_subnetwork" AND '
+            'logName="my_log" AND '
+            'Timestamp >= "2018-04-03T09:50:22Z" AND '
+            'Timestamp < "2018-04-03T10:52:33Z" AND '
+            'jsonPayload.start_time >= "2018-04-03T09:51:22Z" AND '
+            'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
+        )
+        mock_Client.return_value.list_entries.assert_called_once_with(
+            filter_=expression, page_size=1000, projects=project_list
         )
 
 
