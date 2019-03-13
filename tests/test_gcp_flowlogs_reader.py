@@ -5,6 +5,8 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch, call
 from tempfile import NamedTemporaryFile
 
+from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME
+from google.api_core.exceptions import GoogleAPIError, PermissionDenied
 from google.cloud.logging import Client
 from google.cloud.logging.entries import StructEntry
 from google.oauth2.service_account import Credentials
@@ -136,6 +138,14 @@ class MockIterator:
 
     def __next__(self):
         return ''
+
+
+class MockFailedIterator:
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        raise PermissionDenied('403 The caller does not have permission')
 
 
 class TestClient(Client):
@@ -423,10 +433,9 @@ class ReaderTests(TestCase):
         creds.project_id = 'proj1'
         mock_Credentials.from_service_account_info.return_value = creds
 
-        log_client = MagicMock(Client)
+        log_client = MagicMock(TestClient)
         log_client.project = 'yoyodyne-102010'
         log_client.list_entries.return_value = MockIterator()
-        log_client._credentials = ''
         mock_Client.return_value = log_client
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
@@ -489,6 +498,60 @@ class ReaderTests(TestCase):
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
         autospec=True
     )
+    def test_no_resource_manager_api(self, mock_Resource_Manager, mock_Client):
+        resource_client = MagicMock()
+        mock_Resource_Manager.Client.return_value = resource_client
+        resource_client.list_projects.side_effect = [GoogleAPIError]
+        log_client = MagicMock(TestClient)
+        log_client.project = 'yoyodyne-102010'
+        log_client.list_entries.return_value = MockIterator()
+        mock_Client.return_value = log_client
+        earlier = datetime(2018, 4, 3, 9, 51, 22)
+        later = datetime(2018, 4, 3, 10, 51, 33)
+        reader = Reader(
+            start_time=earlier,
+            end_time=later,
+            collect_multiple_projects=True,
+        )
+        self.assertEqual(
+            reader.log_list,
+            [BASE_LOG_NAME.format('yoyodyne-102010')]
+        )
+
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
+        autospec=True
+    )
+    def test_limited_project_access(self, mock_Resource_Manager, mock_Client):
+        resource_client = MagicMock()
+        mock_Resource_Manager.Client.return_value = resource_client
+        resource_client.list_projects.return_value = [
+            MagicMock(project_id='proj1'),
+            MagicMock(project_id='proj2'),
+            MagicMock(project_id='proj3'),
+        ]
+        log_client = MagicMock(TestClient)
+        log_client.project = 'proj1'
+        log_client.list_entries.side_effect = [
+            MockIterator(), MockFailedIterator(), MockIterator()
+        ]
+        mock_Client.return_value = log_client
+        earlier = datetime(2018, 4, 3, 9, 51, 22)
+        later = datetime(2018, 4, 3, 10, 51, 33)
+        reader = Reader(
+            start_time=earlier,
+            end_time=later,
+            collect_multiple_projects=True,
+        )
+        self.assertEqual(
+            reader.log_list,
+            [BASE_LOG_NAME.format('proj1'), BASE_LOG_NAME.format('proj3')]
+        )
+
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
+        autospec=True
+    )
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
     )
@@ -500,7 +563,6 @@ class ReaderTests(TestCase):
         mock_Credentials.from_service_account_info.return_value = creds
 
         mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client._credentials.return_value = ''
         mock_Client.return_value.list_entries.return_value = MockIterator()
 
         resource_client = MagicMock()
