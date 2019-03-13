@@ -34,6 +34,9 @@ setup(
     packages=find_packages(exclude=[]),
     test_suite='tests',
 
-    install_requires=['google-cloud-logging>=1.6.0'],
+    install_requires=[
+        'google-cloud-logging>=1.6.0',
+        'google-cloud-resource-manager==0.28.3',
+    ],
     tests_require=[],
 )

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from ipaddress import ip_address
 from io import StringIO
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 from tempfile import NamedTemporaryFile
 
 from google.cloud.logging import Client
@@ -130,6 +130,12 @@ class MockIterator:
             [SAMPLE_ENTRIES[0], SAMPLE_ENTRIES[1]],
             [SAMPLE_ENTRIES[2]],
         )
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return ''
 
 
 class FlowRecordTests(TestCase):
@@ -399,10 +405,14 @@ class ReaderTests(TestCase):
         )
 
     @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
+        autospec=True
+    )
+    @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
     )
     def test_multiple_projects(
-            self, mock_Credentials, mock_Client
+            self, mock_Credentials, mock_Resource_Manager, mock_Client
     ):
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
@@ -416,12 +426,21 @@ class ReaderTests(TestCase):
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
 
+        resource_client = MagicMock()
+        mock_project1 = MagicMock(project_id='proj1')
+        mock_project2 = MagicMock(project_id='proj2')
+        mock_project3 = MagicMock(project_id='proj3')
+        resource_client.list_projects.return_value = [
+            mock_project1, mock_project2, mock_project3
+        ]
         project_list = ['proj1', 'proj2', 'proj3']
+        mock_Resource_Manager.Client.return_value = resource_client
+
         reader = Reader(
             start_time=earlier,
             end_time=later,
             service_account_info={'foo': 1},
-            project_list=project_list
+            collect_multiple_projects=True
         )
 
         mock_Credentials.from_service_account_info.assert_called_once_with(
@@ -450,13 +469,40 @@ class ReaderTests(TestCase):
             'jsonPayload.start_time >= "2018-04-03T09:51:22Z" AND '
             'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
         )
-        mock_Client.return_value.list_entries.assert_called_once_with(
-            filter_=expression, page_size=1000, projects=project_list
+        mock_list_calls = mock_Client.return_value.list_entries.mock_calls
+        # self.assertEqual(expected, mock_list_calls)
+        self.assertIn(call(page_size=1, projects=['proj1']), mock_list_calls)
+        self.assertIn(call(page_size=1, projects=['proj2']), mock_list_calls)
+        self.assertIn(call(page_size=1, projects=['proj3']), mock_list_calls)
+        self.assertIn(
+            call(filter_=expression, page_size=1000, projects=project_list),
+            mock_list_calls
         )
 
-    def test_log_list(self, mock_Client):
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
+        autospec=True
+    )
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
+    )
+    def test_log_list(
+            self, mock_Credentials, mock_Resource_Manager, mock_Client
+    ):
+        creds = MagicMock(Credentials)
+        creds.project_id = 'proj1'
+        mock_Credentials.from_service_account_info.return_value = creds
+
         mock_Client.return_value.project = 'yoyodyne-102010'
         mock_Client.return_value.list_entries.return_value = MockIterator()
+
+        resource_client = MagicMock()
+        mock_project1 = MagicMock(project_id='yoyodyne-102010')
+        mock_project2 = MagicMock(project_id='proj2')
+        resource_client.list_projects.return_value = [
+            mock_project1, mock_project2
+        ]
+        mock_Resource_Manager.Client.return_value = resource_client
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -464,14 +510,16 @@ class ReaderTests(TestCase):
             start_time=earlier,
             end_time=later,
             log_name='my_log',
-            project_list=['yoyodyne-102010', 'proj2'],
+            service_account_info={'foo': 1},
+            collect_multiple_projects=True,
         )
         # explicit log overwrites project_list
         self.assertEqual(reader.log_list, ['my_log'])
         reader = Reader(
             start_time=earlier,
             end_time=later,
-            project_list=['yoyodyne-102010', 'proj2'],
+            service_account_info={'foo': 1},
+            collect_multiple_projects=True,
         )
 
         # project_list includes multiple logs
@@ -482,7 +530,12 @@ class ReaderTests(TestCase):
         )
 
         # no project_list uses client list
-        reader = Reader(start_time=earlier, end_time=later)
+        reader = Reader(
+            start_time=earlier,
+            end_time=later,
+            service_account_info={'foo': 1},
+            collect_multiple_projects=False,
+        )
         self.assertEqual(
             reader.log_list,
             [log_string.format('yoyodyne-102010')]

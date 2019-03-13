@@ -2,7 +2,8 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from ipaddress import ip_address
 
-from google.cloud import logging as gcp_logging
+from google.api_core.exceptions import GoogleAPIError, PermissionDenied
+from google.cloud import logging as gcp_logging, resource_manager
 from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
@@ -127,7 +128,7 @@ class Reader:
         start_time=None,
         end_time=None,
         filters=None,
-        project_list=None,
+        collect_multiple_projects=True,
         logging_client=None,
         service_account_json=None,
         service_account_info=None,
@@ -153,14 +154,20 @@ class Reader:
             self.logging_client = gcp_logging.Client(
                 credentials=gcp_credentials, **client_args
             )
+            # capture project list, each project requires log view permissions
+            if collect_multiple_projects:
+                self.project_list = self._get_project_list(
+                    self.logging_client, gcp_credentials
+                )
+            else:
+                self.project_list = [self.logging_client.project]
         # Failing that, use the GOOGLE_APPLICATION_CREDENTIALS environment
         # variable.
         else:
             self.logging_client = gcp_logging.Client(**kwargs)
 
         # capture project list, each project requires log view permissions
-        if project_list:
-            self.project_list = project_list
+        if getattr(self, 'project_list', None):
             self.log_list = [
                 BASE_LOG_NAME.format(log_elm) for log_elm in self.project_list
             ]
@@ -190,6 +197,27 @@ class Reader:
 
     def _format_dt(self, dt):
         return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    def _get_project_list(self, log_client, gcp_credentials):
+        # Checking for available projects
+        try:
+            client = resource_manager.Client(credentials=gcp_credentials)
+            projects = [x.project_id for x in client.list_projects()]
+        except GoogleAPIError:  # no permission to collect other projects
+            return [log_client.project]
+
+        # Ensuring all projects have log reading access
+        project_list = []
+        for project_id in projects:
+            try:
+                for _ in log_client.list_entries(
+                        page_size=1, projects=[project_id]
+                ):
+                    break
+                project_list.append(project_id)
+            except PermissionDenied:  # no permission to read project logs
+                pass
+        return project_list
 
     def _reader(self):
         # When filtering by time, use the indexed Timestamp field for fast
