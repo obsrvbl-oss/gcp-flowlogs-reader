@@ -165,19 +165,14 @@ class Reader:
         else:
             self.project_list = [self.logging_client.project]
 
-        if getattr(self, 'project_list', None):
-            self.log_list = [
-                BASE_LOG_NAME.format(log_elm) for log_elm in self.project_list
-            ]
-        else:
-            self.log_list = [
-                BASE_LOG_NAME.format(self.logging_client.project)
-            ]
-
         # The default list of logs is based on the project name and
         # project list, but it can be overridden by providing it explicitly.
         if log_name:
             self.log_list = [log_name]
+        else:
+            self.log_list = [
+                BASE_LOG_NAME.format(log_elm) for log_elm in self.project_list
+            ]
 
         # If no time bounds are given, use the last hour.
         self.end_time = end_time or datetime.utcnow()
@@ -244,7 +239,7 @@ class Reader:
 
         iterator = self.logging_client.list_entries(
             filter_=expression, page_size=self.page_size,
-            projects=getattr(self, 'project_list', None)
+            projects=self.project_list
         )
         for page in iterator.pages:
             for flow_entry in page:
