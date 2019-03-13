@@ -2,7 +2,8 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from ipaddress import ip_address
 
-from google.cloud import logging as gcp_logging
+from google.api_core.exceptions import GoogleAPIError, PermissionDenied
+from google.cloud import logging as gcp_logging, resource_manager
 from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
@@ -127,6 +128,7 @@ class Reader:
         start_time=None,
         end_time=None,
         filters=None,
+        collect_multiple_projects=False,
         logging_client=None,
         service_account_json=None,
         service_account_info=None,
@@ -145,7 +147,6 @@ class Reader:
             gcp_credentials = Credentials.from_service_account_info(
                 service_account_info
             )
-
             # use the project specified in the credentials
             client_args = {'project': gcp_credentials.project_id}
             client_args.update(kwargs)
@@ -158,12 +159,20 @@ class Reader:
         else:
             self.logging_client = gcp_logging.Client(**kwargs)
 
-        # The default log name is based on the project name, but it can
-        # be overridden by providing it explicitly.
-        if log_name:
-            self.log_name = log_name
+        # capture project list, each project requires log view permissions
+        if collect_multiple_projects:
+            self.project_list = self._get_project_list(self.logging_client)
         else:
-            self.log_name = BASE_LOG_NAME.format(self.logging_client.project)
+            self.project_list = [self.logging_client.project]
+
+        # The default list of logs is based on the project name and
+        # project list, but it can be overridden by providing it explicitly.
+        if log_name:
+            self.log_list = [log_name]
+        else:
+            self.log_list = [
+                BASE_LOG_NAME.format(log_elm) for log_elm in self.project_list
+            ]
 
         # If no time bounds are given, use the last hour.
         self.end_time = end_time or datetime.utcnow()
@@ -182,6 +191,28 @@ class Reader:
     def _format_dt(self, dt):
         return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
+    def _get_project_list(self, log_client):
+        credentials = log_client._credentials
+        # Checking for available projects
+        try:
+            client = resource_manager.Client(credentials=credentials)
+            projects = [x.project_id for x in client.list_projects()]
+        except GoogleAPIError:  # no permission to collect other projects
+            return [log_client.project]
+
+        # Ensuring all projects have log reading access
+        project_list = []
+        for project_id in projects:
+            try:
+                for _ in log_client.list_entries(
+                        page_size=1, projects=[project_id]
+                ):
+                    break
+                project_list.append(project_id)
+            except PermissionDenied:  # no permission to read project logs
+                pass
+        return project_list
+
     def _reader(self):
         # When filtering by time, use the indexed Timestamp field for fast
         # searches, then filter for the payload timestamp.
@@ -191,9 +222,14 @@ class Reader:
         payload_start = self._format_dt(self.start_time)
         payload_end = self._format_dt(self.end_time)
 
+        log_filters = [
+            'logName="{}"'.format(log_elm) for log_elm in self.log_list
+        ]
+        full_log_filter = ' OR '.join(log_filters)
+
         filters = self.filters[:] + [
             'resource.type="gce_subnetwork"',
-            'logName="{}"'.format(self.log_name),
+            '({})'.format(full_log_filter),
             'Timestamp >= "{}"'.format(timestamp_start),
             'Timestamp < "{}"'.format(timestamp_end),
             'jsonPayload.start_time >= "{}"'.format(payload_start),
@@ -202,7 +238,8 @@ class Reader:
         expression = ' AND '.join(filters)
 
         iterator = self.logging_client.list_entries(
-            filter_=expression, page_size=self.page_size
+            filter_=expression, page_size=self.page_size,
+            projects=self.project_list
         )
         for page in iterator.pages:
             for flow_entry in page:

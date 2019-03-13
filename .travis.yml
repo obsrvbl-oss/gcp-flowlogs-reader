@@ -13,6 +13,7 @@ install:
 
 script:
     - coverage run --source=gcp_flowlogs_reader setup.py test
+    - coverage report --show-missing
     - flake8 .
 
 notifications:

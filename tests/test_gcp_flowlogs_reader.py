@@ -2,9 +2,11 @@ from datetime import datetime, timedelta
 from ipaddress import ip_address
 from io import StringIO
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 from tempfile import NamedTemporaryFile
 
+from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME
+from google.api_core.exceptions import GoogleAPIError, PermissionDenied
 from google.cloud.logging import Client
 from google.cloud.logging.entries import StructEntry
 from google.oauth2.service_account import Credentials
@@ -130,6 +132,24 @@ class MockIterator:
             [SAMPLE_ENTRIES[0], SAMPLE_ENTRIES[1]],
             [SAMPLE_ENTRIES[2]],
         )
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return ''
+
+
+class MockFailedIterator:
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        raise PermissionDenied('403 The caller does not have permission')
+
+
+class TestClient(Client):
+    _credentials = ''
 
 
 class FlowRecordTests(TestCase):
@@ -271,7 +291,8 @@ class FlowRecordTests(TestCase):
 
 
 @patch(
-    'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client', autospec=True
+    'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client',
+    autospec=TestClient
 )
 class ReaderTests(TestCase):
     def test_init_with_client(self, mock_Client):
@@ -342,19 +363,19 @@ class ReaderTests(TestCase):
         Reader(project='yoyodyne-102010')
         mock_Client.assert_called_once_with(project='yoyodyne-102010')
 
-    def test_init_log_name(self, mock_Client):
-        mock_Client.return_value.project = 'yoyodyne-102010'
+    def test_init_log_list(self, mock_Client):
+        mock_Client.return_value.project = 'yoyodyne-1020'
 
         # Nothing specified - log name is derived from the project name
         normal_reader = Reader()
         self.assertEqual(
-            normal_reader.log_name,
-            'projects/yoyodyne-102010/logs/compute.googleapis.com%2Fvpc_flows'
+            normal_reader.log_list,
+            ['projects/yoyodyne-1020/logs/compute.googleapis.com%2Fvpc_flows']
         )
 
-        # Custom name specified - log name is taken directly
+        # Custom name specified - log name is added to log list
         custom_reader = Reader(log_name='custom-log')
-        self.assertEqual(custom_reader.log_name, 'custom-log')
+        self.assertEqual(custom_reader.log_list, ['custom-log'])
 
     def test_init_times(self, mock_Client):
         mock_Client.return_value.project = 'yoyodyne-102010'
@@ -388,14 +409,204 @@ class ReaderTests(TestCase):
         # Test the client getting called correctly
         expression = (
             'resource.type="gce_subnetwork" AND '
-            'logName="my_log" AND '
+            '(logName="my_log") AND '
             'Timestamp >= "2018-04-03T09:50:22Z" AND '
             'Timestamp < "2018-04-03T10:52:33Z" AND '
             'jsonPayload.start_time >= "2018-04-03T09:51:22Z" AND '
             'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
         )
         mock_Client.return_value.list_entries.assert_called_once_with(
-            filter_=expression, page_size=1000
+            filter_=expression, page_size=1000, projects=['yoyodyne-102010']
+        )
+
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
+        autospec=True
+    )
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
+    )
+    def test_multiple_projects(
+            self, mock_Credentials, mock_Resource_Manager, mock_Client
+    ):
+        creds = MagicMock(Credentials)
+        creds.project_id = 'proj1'
+        mock_Credentials.from_service_account_info.return_value = creds
+
+        log_client = MagicMock(TestClient)
+        log_client.project = 'yoyodyne-102010'
+        log_client.list_entries.return_value = MockIterator()
+        mock_Client.return_value = log_client
+
+        earlier = datetime(2018, 4, 3, 9, 51, 22)
+        later = datetime(2018, 4, 3, 10, 51, 33)
+
+        resource_client = MagicMock()
+        mock_project1 = MagicMock(project_id='proj1')
+        mock_project2 = MagicMock(project_id='proj2')
+        mock_project3 = MagicMock(project_id='proj3')
+        resource_client.list_projects.return_value = [
+            mock_project1, mock_project2, mock_project3
+        ]
+        project_list = ['proj1', 'proj2', 'proj3']
+        mock_Resource_Manager.Client.return_value = resource_client
+
+        reader = Reader(
+            start_time=earlier,
+            end_time=later,
+            service_account_info={'foo': 1},
+            collect_multiple_projects=True
+        )
+
+        mock_Credentials.from_service_account_info.assert_called_once_with(
+            {'foo': 1}
+        )
+        mock_Client.assert_called_once_with(
+            project='proj1', credentials=creds
+        )
+
+        # Test for flows getting created
+        actual = list(reader)
+        expected = [FlowRecord(x) for x in SAMPLE_ENTRIES]
+        self.assertEqual(actual, expected)
+
+        # Test the client getting called correctly with multiple projects
+        expression = (
+            'resource.type="gce_subnetwork" AND '
+            '(logName="projects/proj1/logs/'
+            'compute.googleapis.com%2Fvpc_flows" OR '
+            'logName="projects/proj2/logs/'
+            'compute.googleapis.com%2Fvpc_flows" OR '
+            'logName="projects/proj3/logs/'
+            'compute.googleapis.com%2Fvpc_flows") AND '
+            'Timestamp >= "2018-04-03T09:50:22Z" AND '
+            'Timestamp < "2018-04-03T10:52:33Z" AND '
+            'jsonPayload.start_time >= "2018-04-03T09:51:22Z" AND '
+            'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
+        )
+        mock_list_calls = mock_Client.return_value.list_entries.mock_calls
+        # self.assertEqual(expected, mock_list_calls)
+        self.assertIn(call(page_size=1, projects=['proj1']), mock_list_calls)
+        self.assertIn(call(page_size=1, projects=['proj2']), mock_list_calls)
+        self.assertIn(call(page_size=1, projects=['proj3']), mock_list_calls)
+        self.assertIn(
+            call(filter_=expression, page_size=1000, projects=project_list),
+            mock_list_calls
+        )
+
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
+        autospec=True
+    )
+    def test_no_resource_manager_api(self, mock_Resource_Manager, mock_Client):
+        resource_client = MagicMock()
+        mock_Resource_Manager.Client.return_value = resource_client
+        resource_client.list_projects.side_effect = [GoogleAPIError]
+        log_client = MagicMock(TestClient)
+        log_client.project = 'yoyodyne-102010'
+        log_client.list_entries.return_value = MockIterator()
+        mock_Client.return_value = log_client
+        earlier = datetime(2018, 4, 3, 9, 51, 22)
+        later = datetime(2018, 4, 3, 10, 51, 33)
+        reader = Reader(
+            start_time=earlier,
+            end_time=later,
+            collect_multiple_projects=True,
+        )
+        self.assertEqual(
+            reader.log_list,
+            [BASE_LOG_NAME.format('yoyodyne-102010')]
+        )
+
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
+        autospec=True
+    )
+    def test_limited_project_access(self, mock_Resource_Manager, mock_Client):
+        resource_client = MagicMock()
+        mock_Resource_Manager.Client.return_value = resource_client
+        resource_client.list_projects.return_value = [
+            MagicMock(project_id='proj1'),
+            MagicMock(project_id='proj2'),
+            MagicMock(project_id='proj3'),
+        ]
+        log_client = MagicMock(TestClient)
+        log_client.project = 'proj1'
+        log_client.list_entries.side_effect = [
+            MockIterator(), MockFailedIterator(), MockIterator()
+        ]
+        mock_Client.return_value = log_client
+        earlier = datetime(2018, 4, 3, 9, 51, 22)
+        later = datetime(2018, 4, 3, 10, 51, 33)
+        reader = Reader(
+            start_time=earlier,
+            end_time=later,
+            collect_multiple_projects=True,
+        )
+        self.assertEqual(
+            reader.log_list,
+            [BASE_LOG_NAME.format('proj1'), BASE_LOG_NAME.format('proj3')]
+        )
+
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
+        autospec=True
+    )
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
+    )
+    def test_log_list(
+            self, mock_Credentials, mock_Resource_Manager, mock_Client
+    ):
+        creds = MagicMock(Credentials)
+        creds.project_id = 'proj1'
+        mock_Credentials.from_service_account_info.return_value = creds
+
+        mock_Client.return_value.project = 'yoyodyne-102010'
+        mock_Client.return_value.list_entries.return_value = MockIterator()
+
+        resource_client = MagicMock()
+        mock_project1 = MagicMock(project_id='yoyodyne-102010')
+        mock_project2 = MagicMock(project_id='proj2')
+        resource_client.list_projects.return_value = [
+            mock_project1, mock_project2
+        ]
+        mock_Resource_Manager.Client.return_value = resource_client
+
+        earlier = datetime(2018, 4, 3, 9, 51, 22)
+        later = datetime(2018, 4, 3, 10, 51, 33)
+        reader = Reader(
+            start_time=earlier,
+            end_time=later,
+            log_name='my_log',
+            collect_multiple_projects=True,
+        )
+        # explicit log overwrites project_list
+        self.assertEqual(reader.log_list, ['my_log'])
+        reader = Reader(
+            start_time=earlier,
+            end_time=later,
+            service_account_info={'foo': 1},
+            collect_multiple_projects=True,
+        )
+
+        # project_list includes multiple logs
+        log_string = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
+        self.assertEqual(
+            reader.log_list,
+            [log_string.format('yoyodyne-102010'), log_string.format('proj2')]
+        )
+
+        # no project_list uses client list
+        reader = Reader(
+            start_time=earlier,
+            end_time=later,
+            service_account_info={'foo': 1},
+            collect_multiple_projects=False,
+        )
+        self.assertEqual(
+            reader.log_list,
+            [log_string.format('yoyodyne-102010')]
         )
 
 
