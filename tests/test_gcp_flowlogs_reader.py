@@ -138,6 +138,10 @@ class MockIterator:
         return ''
 
 
+class TestClient(Client):
+    _credentials = ''
+
+
 class FlowRecordTests(TestCase):
     def test_init_outbound(self):
         flow_record = FlowRecord(SAMPLE_ENTRIES[0])
@@ -277,7 +281,8 @@ class FlowRecordTests(TestCase):
 
 
 @patch(
-    'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client', autospec=True
+    'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client',
+    autospec=TestClient
 )
 class ReaderTests(TestCase):
     def test_init_with_client(self, mock_Client):
@@ -401,7 +406,7 @@ class ReaderTests(TestCase):
             'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
         )
         mock_Client.return_value.list_entries.assert_called_once_with(
-            filter_=expression, page_size=1000, projects=None
+            filter_=expression, page_size=1000, projects=['yoyodyne-102010']
         )
 
     @patch(
@@ -421,6 +426,7 @@ class ReaderTests(TestCase):
         log_client = MagicMock(Client)
         log_client.project = 'yoyodyne-102010'
         log_client.list_entries.return_value = MockIterator()
+        log_client._credentials = ''
         mock_Client.return_value = log_client
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
@@ -494,6 +500,7 @@ class ReaderTests(TestCase):
         mock_Credentials.from_service_account_info.return_value = creds
 
         mock_Client.return_value.project = 'yoyodyne-102010'
+        mock_Client._credentials.return_value = ''
         mock_Client.return_value.list_entries.return_value = MockIterator()
 
         resource_client = MagicMock()
@@ -510,7 +517,6 @@ class ReaderTests(TestCase):
             start_time=earlier,
             end_time=later,
             log_name='my_log',
-            service_account_info={'foo': 1},
             collect_multiple_projects=True,
         )
         # explicit log overwrites project_list

@@ -128,7 +128,7 @@ class Reader:
         start_time=None,
         end_time=None,
         filters=None,
-        collect_multiple_projects=True,
+        collect_multiple_projects=False,
         logging_client=None,
         service_account_json=None,
         service_account_info=None,
@@ -154,17 +154,16 @@ class Reader:
             self.logging_client = gcp_logging.Client(
                 credentials=gcp_credentials, **client_args
             )
-            # capture project list, each project requires log view permissions
-            if collect_multiple_projects:
-                self.project_list = self._get_project_list(
-                    self.logging_client, gcp_credentials
-                )
-            else:
-                self.project_list = [self.logging_client.project]
         # Failing that, use the GOOGLE_APPLICATION_CREDENTIALS environment
         # variable.
         else:
             self.logging_client = gcp_logging.Client(**kwargs)
+
+        # capture project list, each project requires log view permissions
+        if collect_multiple_projects:
+            self.project_list = self._get_project_list(self.logging_client)
+        else:
+            self.project_list = [self.logging_client.project]
 
         # capture project list, each project requires log view permissions
         if getattr(self, 'project_list', None):
@@ -198,10 +197,11 @@ class Reader:
     def _format_dt(self, dt):
         return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    def _get_project_list(self, log_client, gcp_credentials):
+    def _get_project_list(self, log_client):
+        credentials = log_client._credentials
         # Checking for available projects
         try:
-            client = resource_manager.Client(credentials=gcp_credentials)
+            client = resource_manager.Client(credentials=credentials)
             projects = [x.project_id for x in client.list_projects()]
         except GoogleAPIError:  # no permission to collect other projects
             return [log_client.project]
