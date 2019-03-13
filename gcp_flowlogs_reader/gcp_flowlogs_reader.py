@@ -165,7 +165,6 @@ class Reader:
         else:
             self.project_list = [self.logging_client.project]
 
-        # capture project list, each project requires log view permissions
         if getattr(self, 'project_list', None):
             self.log_list = [
                 BASE_LOG_NAME.format(log_elm) for log_elm in self.project_list
