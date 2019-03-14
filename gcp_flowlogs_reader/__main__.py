@@ -112,6 +112,8 @@ def get_reader(args):
     if args.filters:
         kwargs['filters'] = args.filters.split(' AND ')
 
+    kwargs['collect_multiple_projects'] = args.collect_multiple_projects
+
     kwargs['service_account_json'] = args.credentials_file
     kwargs['log_name'] = args.log_name
 
@@ -158,6 +160,11 @@ def main(argv=None):
         type=str,
         help='path to a JSON file with service account credentials '
         '(default uses the GOOGLE_APPLICATION_CREDENTIALS variable)'
+    )
+    parser.add_argument(
+        '--collect-multiple-projects',
+        action='store_true',
+        help='whether or not to collect flows from multiple projects'
     )
     parser.add_argument(
         '--log-name',

@@ -734,11 +734,15 @@ class MainCLITests(TestCase):
         expected_len = 2
         self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
 
-    def test_main(self):
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
+        autospec=True
+    )
+    def test_main(self, mock_Resource_Manager):
         patch_path = (
             'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
         )
-        with patch(patch_path, autospec=True) as mock_Client:
+        with patch(patch_path, autospec=TestClient) as mock_Client:
             mock_Client.return_value.project = 'yoyodyne-102010'
             mock_Client.return_value.list_entries.return_value = MockIterator()
 
@@ -752,3 +756,34 @@ class MainCLITests(TestCase):
                 actual_len = len(mock_stdout.getvalue().splitlines())
         expected_len = 4
         self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
+        self.assertFalse(mock_Resource_Manager.Client.called)
+
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
+        autospec=True
+    )
+    @patch(
+        'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client',
+        autospec=TestClient
+    )
+    def test_main_multi_project_argument(
+            self, mock_Client, mock_Resource_Manager
+    ):
+        mock_Client.return_value.project = 'yoyodyne-102010'
+        mock_Client.return_value.list_entries.return_value = MockIterator()
+
+        argv = [
+            '--start-time', '2018-04-03 12:00:00',
+            '--end-time', '2018-04-03 13:00:00',
+            '--filters', 'jsonPayload.src_ip="198.51.100.1"',
+            '--collect-multiple-projects'
+        ]
+        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            cli_module.main(argv)
+            actual_len = len(mock_stdout.getvalue().splitlines())
+        expected_len = 4
+        self.assertEqual(actual_len, expected_len)
+        self.assertIn(
+            call().list_projects(),
+            mock_Resource_Manager.Client.mock_calls
+        )
