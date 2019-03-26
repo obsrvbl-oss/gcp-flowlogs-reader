@@ -209,7 +209,7 @@ class Reader:
                 ):
                     break
                 project_list.append(project_id)
-            except PermissionDenied:  # no permission to read project logs
+            except GoogleAPIError:  # unable to read project logs
                 pass
         return project_list
 
