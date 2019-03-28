@@ -2,7 +2,7 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from ipaddress import ip_address
 
-from google.api_core.exceptions import GoogleAPIError, PermissionDenied
+from google.api_core.exceptions import GoogleAPIError
 from google.cloud import logging as gcp_logging, resource_manager
 from google.oauth2.service_account import Credentials
 
@@ -209,7 +209,7 @@ class Reader:
                 ):
                     break
                 project_list.append(project_id)
-            except PermissionDenied:  # no permission to read project logs
+            except GoogleAPIError:  # unable to read project logs
                 pass
         return project_list
 

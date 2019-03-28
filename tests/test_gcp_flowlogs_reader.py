@@ -6,7 +6,11 @@ from unittest.mock import MagicMock, patch, call
 from tempfile import NamedTemporaryFile
 
 from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME
-from google.api_core.exceptions import GoogleAPIError, PermissionDenied
+from google.api_core.exceptions import (
+    GoogleAPIError,
+    PermissionDenied,
+    NotFound,
+)
 from google.cloud.logging import Client
 from google.cloud.logging.entries import StructEntry
 from google.oauth2.service_account import Credentials
@@ -146,6 +150,14 @@ class MockFailedIterator:
 
     def __next__(self):
         raise PermissionDenied('403 The caller does not have permission')
+
+
+class MockNotFoundIterator:
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        raise NotFound('403 The project was not found')
 
 
 class TestClient(Client):
@@ -533,7 +545,7 @@ class ReaderTests(TestCase):
         log_client = MagicMock(TestClient)
         log_client.project = 'proj1'
         log_client.list_entries.side_effect = [
-            MockIterator(), MockFailedIterator(), MockIterator()
+            MockIterator(), MockFailedIterator(), MockNotFoundIterator()
         ]
         mock_Client.return_value = log_client
         earlier = datetime(2018, 4, 3, 9, 51, 22)
@@ -545,7 +557,7 @@ class ReaderTests(TestCase):
         )
         self.assertEqual(
             reader.log_list,
-            [BASE_LOG_NAME.format('proj1'), BASE_LOG_NAME.format('proj3')]
+            [BASE_LOG_NAME.format('proj1')]
         )
 
     @patch(
