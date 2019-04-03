@@ -225,11 +225,11 @@ class Reader:
         expression = ' AND '.join(filters)
 
         for project in self.project_list:
+            iterator = self.logging_client.list_entries(
+                filter_=expression, page_size=self.page_size,
+                projects=[project]  # only collects current project flows
+            )
             try:
-                iterator = self.logging_client.list_entries(
-                    filter_=expression, page_size=self.page_size,
-                    projects=[project]  # only collects current project flows
-                )
                 for page in iterator.pages:
                     for flow_entry in page:
                         yield FlowRecord(flow_entry)

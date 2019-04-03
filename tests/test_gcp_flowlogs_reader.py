@@ -163,7 +163,7 @@ class MockNotFoundIterator:
         return self
 
     def __next__(self):
-        raise NotFound('404 The project was not found')
+        raise NotFound('404 Project does not exist: project-name')
 
 
 class TestClient(Client):
