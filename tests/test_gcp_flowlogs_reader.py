@@ -566,6 +566,14 @@ class ReaderTests(TestCase):
             end_time=later,
             collect_multiple_projects=True,
         )
+        self.assertEqual(
+            reader.log_list,
+            [
+                BASE_LOG_NAME.format('proj1'),
+                BASE_LOG_NAME.format('proj2'),
+                BASE_LOG_NAME.format('proj3')
+            ]
+        )
         entry_list = list(reader)
         self.assertEqual(entry_list, [FlowRecord(x) for x in SAMPLE_ENTRIES])
 
