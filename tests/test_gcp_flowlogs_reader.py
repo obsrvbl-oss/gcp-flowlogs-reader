@@ -571,7 +571,7 @@ class ReaderTests(TestCase):
             [
                 BASE_LOG_NAME.format('proj1'),
                 BASE_LOG_NAME.format('proj2'),
-                BASE_LOG_NAME.format('proj3')
+                BASE_LOG_NAME.format('proj3'),
             ]
         )
         entry_list = list(reader)
