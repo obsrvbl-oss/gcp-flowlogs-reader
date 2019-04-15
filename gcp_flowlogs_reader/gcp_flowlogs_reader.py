@@ -193,24 +193,11 @@ class Reader:
 
     def _get_project_list(self, log_client):
         credentials = log_client._credentials
-        # Checking for available projects
         try:
             client = resource_manager.Client(credentials=credentials)
-            projects = [x.project_id for x in client.list_projects()]
+            project_list = [x.project_id for x in client.list_projects()]
         except GoogleAPIError:  # no permission to collect other projects
             return [log_client.project]
-
-        # Ensuring all projects have log reading access
-        project_list = []
-        for project_id in projects:
-            try:
-                for _ in log_client.list_entries(
-                        page_size=1, projects=[project_id]
-                ):
-                    break
-                project_list.append(project_id)
-            except GoogleAPIError:  # unable to read project logs
-                pass
         return project_list
 
     def _reader(self):
@@ -237,10 +224,14 @@ class Reader:
         ]
         expression = ' AND '.join(filters)
 
-        iterator = self.logging_client.list_entries(
-            filter_=expression, page_size=self.page_size,
-            projects=self.project_list
-        )
-        for page in iterator.pages:
-            for flow_entry in page:
-                yield FlowRecord(flow_entry)
+        for project in self.project_list:
+            try:
+                iterator = self.logging_client.list_entries(
+                    filter_=expression, page_size=self.page_size,
+                    projects=[project]  # only collects current project flows
+                )
+                for page in iterator.pages:
+                    for flow_entry in page:
+                        yield FlowRecord(flow_entry)
+            except GoogleAPIError:  # Expected for removed/restricted projects
+                pass

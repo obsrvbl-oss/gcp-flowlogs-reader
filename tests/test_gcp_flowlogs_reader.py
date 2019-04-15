@@ -145,6 +145,9 @@ class MockIterator:
 
 
 class MockFailedIterator:
+    def __init__(self):
+        self.pages = self
+
     def __iter__(self):
         return self
 
@@ -153,11 +156,14 @@ class MockFailedIterator:
 
 
 class MockNotFoundIterator:
+    def __init__(self):
+        self.pages = self
+
     def __iter__(self):
         return self
 
     def __next__(self):
-        raise NotFound('403 The project was not found')
+        raise NotFound('404 Project does not exist: project-name')
 
 
 class TestClient(Client):
@@ -447,7 +453,15 @@ class ReaderTests(TestCase):
 
         log_client = MagicMock(TestClient)
         log_client.project = 'yoyodyne-102010'
-        log_client.list_entries.return_value = MockIterator()
+        proj1_iterator = MockIterator()
+        proj1_iterator.pages = [[SAMPLE_ENTRIES[0]]]
+        proj2_iterator = MockIterator()
+        proj2_iterator.pages = [[SAMPLE_ENTRIES[1]]]
+        proj3_iterator = MockIterator()
+        proj3_iterator.pages = [[SAMPLE_ENTRIES[2]]]
+        log_client.list_entries.side_effect = [
+            proj1_iterator, proj2_iterator, proj3_iterator
+        ]
         mock_Client.return_value = log_client
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
@@ -497,14 +511,11 @@ class ReaderTests(TestCase):
             'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
         )
         mock_list_calls = mock_Client.return_value.list_entries.mock_calls
-        # self.assertEqual(expected, mock_list_calls)
-        self.assertIn(call(page_size=1, projects=['proj1']), mock_list_calls)
-        self.assertIn(call(page_size=1, projects=['proj2']), mock_list_calls)
-        self.assertIn(call(page_size=1, projects=['proj3']), mock_list_calls)
-        self.assertIn(
-            call(filter_=expression, page_size=1000, projects=project_list),
-            mock_list_calls
-        )
+        for proj in project_list:
+            self.assertIn(
+                call(filter_=expression, page_size=1000, projects=[proj]),
+                mock_list_calls
+            )
 
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
@@ -545,7 +556,7 @@ class ReaderTests(TestCase):
         log_client = MagicMock(TestClient)
         log_client.project = 'proj1'
         log_client.list_entries.side_effect = [
-            MockIterator(), MockFailedIterator(), MockNotFoundIterator()
+            MockFailedIterator(), MockIterator(),  MockNotFoundIterator()
         ]
         mock_Client.return_value = log_client
         earlier = datetime(2018, 4, 3, 9, 51, 22)
@@ -557,8 +568,14 @@ class ReaderTests(TestCase):
         )
         self.assertEqual(
             reader.log_list,
-            [BASE_LOG_NAME.format('proj1')]
+            [
+                BASE_LOG_NAME.format('proj1'),
+                BASE_LOG_NAME.format('proj2'),
+                BASE_LOG_NAME.format('proj3'),
+            ]
         )
+        entry_list = list(reader)
+        self.assertEqual(entry_list, [FlowRecord(x) for x in SAMPLE_ENTRIES])
 
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
@@ -783,6 +800,10 @@ class MainCLITests(TestCase):
     ):
         mock_Client.return_value.project = 'yoyodyne-102010'
         mock_Client.return_value.list_entries.return_value = MockIterator()
+        resource_client = MagicMock()
+        mock_project1 = MagicMock(project_id='yoyodyne-102010')
+        resource_client.list_projects.return_value = [mock_project1]
+        mock_Resource_Manager.Client.return_value = resource_client
 
         argv = [
             '--start-time', '2018-04-03 12:00:00',
