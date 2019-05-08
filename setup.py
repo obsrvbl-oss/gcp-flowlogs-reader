@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='gcp_flowlogs_reader',
-    version='0.6',
+    version='0.6.1',
     license='Apache',
     url='https://github.com/obsrvbl/gcp-flowlogs-reader',
 
@@ -36,7 +36,7 @@ setup(
 
     install_requires=[
         'google-cloud-logging>=1.6.0',
-        'google-cloud-resource-manager==0.28.3',
+        'google-cloud-resource-manager>=0.28.3',
     ],
     tests_require=[],
 )
