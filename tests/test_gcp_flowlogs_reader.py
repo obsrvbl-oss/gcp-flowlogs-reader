@@ -33,18 +33,18 @@ SAMPLE_PAYLODS = [
             'dest_port': 3389.0,
             'protocol': 6.0,
             'src_ip': '198.51.100.75',
-            'src_port': 49444.0
+            'src_port': 49444.0,
         },
         'dest_instance': {
             'project_id': 'yoyodyne-102010',
             'region': 'us-west1',
             'vm_name': 'vm-instance-01',
-            'zone': 'us-west1-a'
+            'zone': 'us-west1-a',
         },
         'dest_vpc': {
             'project_id': 'yoyodyne-102010',
             'subnetwork_name': 'yoyo-vpc-1',
-            'vpc_name': 'yoyo-vpc-1'
+            'vpc_name': 'yoyo-vpc-1',
         },
         'end_time': '2018-04-03T13:47:38.401Z',
         'packets_sent': '4',
@@ -53,10 +53,10 @@ SAMPLE_PAYLODS = [
             'city': 'Santa Teresa',
             'continent': 'America',
             'country': 'usa',
-            'region': 'California'
+            'region': 'California',
         },
         'start_time': '2018-04-03T13:47:37.301723960Z',
-        'rtt_msec': '61'
+        'rtt_msec': '61',
     },
     {
         'bytes_sent': '756',
@@ -65,13 +65,13 @@ SAMPLE_PAYLODS = [
             'dest_port': 49444.0,
             'protocol': 6.0,
             'src_ip': '192.0.2.2',
-            'src_port': 3389.0
+            'src_port': 3389.0,
         },
         'dest_location': {
             'city': 'Santa Teresa',
             'continent': 'America',
             'country': 'usa',
-            'region': 'California'
+            'region': 'California',
         },
         'end_time': '2018-04-03T13:47:33.937764566Z',
         'packets_sent': '6',
@@ -80,14 +80,14 @@ SAMPLE_PAYLODS = [
             'project_id': 'yoyodyne-102010',
             'region': 'us-west1',
             'vm_name': 'vm-instance-01',
-            'zone': 'us-west1-a'
+            'zone': 'us-west1-a',
         },
         'src_vpc': {
             'project_id': 'yoyodyne-102010',
             'subnetwork_name': 'yoyo-vpc-1',
-            'vpc_name': 'yoyo-vpc-1'
+            'vpc_name': 'yoyo-vpc-1',
         },
-        'start_time': '2018-04-03T13:47:32.805417512Z'
+        'start_time': '2018-04-03T13:47:32.805417512Z',
     },
     {
         'bytes_sent': '1020',
@@ -96,7 +96,7 @@ SAMPLE_PAYLODS = [
             'dest_port': 65535.0,
             'protocol': 6.0,
             'src_ip': '192.0.2.2',
-            'src_port': 3389.0
+            'src_port': 3389.0,
         },
         'end_time': '2018-04-03T13:48:33.937764566Z',
         'packets_sent': '20',
@@ -105,25 +105,25 @@ SAMPLE_PAYLODS = [
             'project_id': 'yoyodyne-102010',
             'region': 'us-west1',
             'vm_name': 'vm-instance-01',
-            'zone': 'us-west1-a'
+            'zone': 'us-west1-a',
         },
         'src_vpc': {
             'project_id': 'yoyodyne-102010',
             'subnetwork_name': 'yoyo-vpc-1',
-            'vpc_name': 'yoyo-vpc-1'
+            'vpc_name': 'yoyo-vpc-1',
         },
         'dest_instance': {
             'project_id': 'yoyodyne-102010',
             'region': 'us-west1',
             'vm_name': 'vm-instance-02',
-            'zone': 'us-west1-a'
+            'zone': 'us-west1-a',
         },
         'dest_vpc': {
             'project_id': 'yoyodyne-102010',
             'subnetwork_name': 'yoyo-vpc-1',
-            'vpc_name': 'yoyo-vpc-1'
+            'vpc_name': 'yoyo-vpc-1',
         },
-        'start_time': '2018-04-03T13:47:31.805417512Z'
+        'start_time': '2018-04-03T13:47:31.805417512Z',
     },
 ]
 
@@ -188,13 +188,13 @@ class FlowRecordTests(TestCase):
             ('src_instance', None),
             (
                 'dest_instance',
-                InstanceDetails(**SAMPLE_PAYLODS[0]['dest_instance'])
+                InstanceDetails(**SAMPLE_PAYLODS[0]['dest_instance']),
             ),
             ('src_vpc', None),
             ('dest_vpc', VpcDetails(**SAMPLE_PAYLODS[0]['dest_vpc'])),
             (
                 'src_location',
-                GeographicDetails(**SAMPLE_PAYLODS[0]['src_location'])
+                GeographicDetails(**SAMPLE_PAYLODS[0]['src_location']),
             ),
             ('dest_location', None),
         ]:
@@ -219,7 +219,7 @@ class FlowRecordTests(TestCase):
             ('reporter', 'SRC'),
             (
                 'src_instance',
-                InstanceDetails(**SAMPLE_PAYLODS[1]['src_instance'])
+                InstanceDetails(**SAMPLE_PAYLODS[1]['src_instance']),
             ),
             ('dest_instance', None),
             ('src_vpc', VpcDetails(**SAMPLE_PAYLODS[1]['src_vpc'])),
@@ -227,7 +227,7 @@ class FlowRecordTests(TestCase):
             ('src_location', None),
             (
                 'dest_location',
-                GeographicDetails(**SAMPLE_PAYLODS[1]['dest_location'])
+                GeographicDetails(**SAMPLE_PAYLODS[1]['dest_location']),
             ),
         ]:
             with self.subTest(attr=attr):
@@ -242,18 +242,16 @@ class FlowRecordTests(TestCase):
         self.assertNotEqual(
             FlowRecord(SAMPLE_ENTRIES[0]), FlowRecord(SAMPLE_ENTRIES[1])
         )
-        self.assertNotEqual(
-            FlowRecord(SAMPLE_ENTRIES[0]), SAMPLE_ENTRIES[0]
-        )
+        self.assertNotEqual(FlowRecord(SAMPLE_ENTRIES[0]), SAMPLE_ENTRIES[0])
 
     def test_hash(self):
         self.assertEqual(
             hash(FlowRecord(SAMPLE_ENTRIES[0])),
-            hash(FlowRecord(SAMPLE_ENTRIES[0]))
+            hash(FlowRecord(SAMPLE_ENTRIES[0])),
         )
         self.assertNotEqual(
             hash(FlowRecord(SAMPLE_ENTRIES[0])),
-            hash(FlowRecord(SAMPLE_ENTRIES[1]))
+            hash(FlowRecord(SAMPLE_ENTRIES[1])),
         )
 
     def test_repr(self):
@@ -310,7 +308,7 @@ class FlowRecordTests(TestCase):
 
 @patch(
     'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client',
-    autospec=TestClient
+    autospec=TestClient,
 )
 class ReaderTests(TestCase):
     def test_init_with_client(self, mock_Client):
@@ -337,9 +335,7 @@ class ReaderTests(TestCase):
         mock_Credentials.from_service_account_info.assert_called_once_with(
             {'foo': 1}
         )
-        mock_Client.assert_called_once_with(
-            project='proj1', credentials=creds
-        )
+        mock_Client.assert_called_once_with(project='proj1', credentials=creds)
 
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
@@ -363,9 +359,7 @@ class ReaderTests(TestCase):
         mock_Credentials.from_service_account_info.assert_called_once_with(
             {'foo': 1}
         )
-        mock_Client.assert_called_once_with(
-            project='proj3', credentials=creds
-        )
+        mock_Client.assert_called_once_with(project='proj3', credentials=creds)
 
     def test_init_with_credentials_json(self, mock_Client):
         with NamedTemporaryFile() as temp_file:
@@ -388,7 +382,7 @@ class ReaderTests(TestCase):
         normal_reader = Reader()
         self.assertEqual(
             normal_reader.log_list,
-            ['projects/yoyodyne-1020/logs/compute.googleapis.com%2Fvpc_flows']
+            ['projects/yoyodyne-1020/logs/compute.googleapis.com%2Fvpc_flows'],
         )
 
         # Custom name specified - log name is added to log list
@@ -439,13 +433,13 @@ class ReaderTests(TestCase):
 
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True
+        autospec=True,
     )
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
     )
     def test_multiple_projects(
-            self, mock_Credentials, mock_Resource_Manager, mock_Client
+        self, mock_Credentials, mock_Resource_Manager, mock_Client
     ):
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
@@ -460,7 +454,9 @@ class ReaderTests(TestCase):
         proj3_iterator = MockIterator()
         proj3_iterator.pages = [[SAMPLE_ENTRIES[2]]]
         log_client.list_entries.side_effect = [
-            proj1_iterator, proj2_iterator, proj3_iterator
+            proj1_iterator,
+            proj2_iterator,
+            proj3_iterator,
         ]
         mock_Client.return_value = log_client
 
@@ -472,7 +468,9 @@ class ReaderTests(TestCase):
         mock_project2 = MagicMock(project_id='proj2')
         mock_project3 = MagicMock(project_id='proj3')
         resource_client.list_projects.return_value = [
-            mock_project1, mock_project2, mock_project3
+            mock_project1,
+            mock_project2,
+            mock_project3,
         ]
         project_list = ['proj1', 'proj2', 'proj3']
         mock_Resource_Manager.Client.return_value = resource_client
@@ -481,15 +479,13 @@ class ReaderTests(TestCase):
             start_time=earlier,
             end_time=later,
             service_account_info={'foo': 1},
-            collect_multiple_projects=True
+            collect_multiple_projects=True,
         )
 
         mock_Credentials.from_service_account_info.assert_called_once_with(
             {'foo': 1}
         )
-        mock_Client.assert_called_once_with(
-            project='proj1', credentials=creds
-        )
+        mock_Client.assert_called_once_with(project='proj1', credentials=creds)
 
         # Test for flows getting created
         actual = list(reader)
@@ -514,12 +510,12 @@ class ReaderTests(TestCase):
         for proj in project_list:
             self.assertIn(
                 call(filter_=expression, page_size=1000, projects=[proj]),
-                mock_list_calls
+                mock_list_calls,
             )
 
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True
+        autospec=True,
     )
     def test_no_resource_manager_api(self, mock_Resource_Manager, mock_Client):
         resource_client = MagicMock()
@@ -537,13 +533,12 @@ class ReaderTests(TestCase):
             collect_multiple_projects=True,
         )
         self.assertEqual(
-            reader.log_list,
-            [BASE_LOG_NAME.format('yoyodyne-102010')]
+            reader.log_list, [BASE_LOG_NAME.format('yoyodyne-102010')]
         )
 
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True
+        autospec=True,
     )
     def test_limited_project_access(self, mock_Resource_Manager, mock_Client):
         resource_client = MagicMock()
@@ -556,7 +551,9 @@ class ReaderTests(TestCase):
         log_client = MagicMock(TestClient)
         log_client.project = 'proj1'
         log_client.list_entries.side_effect = [
-            MockFailedIterator(), MockIterator(),  MockNotFoundIterator()
+            MockFailedIterator(),
+            MockIterator(),
+            MockNotFoundIterator(),
         ]
         mock_Client.return_value = log_client
         earlier = datetime(2018, 4, 3, 9, 51, 22)
@@ -572,20 +569,20 @@ class ReaderTests(TestCase):
                 BASE_LOG_NAME.format('proj1'),
                 BASE_LOG_NAME.format('proj2'),
                 BASE_LOG_NAME.format('proj3'),
-            ]
+            ],
         )
         entry_list = list(reader)
         self.assertEqual(entry_list, [FlowRecord(x) for x in SAMPLE_ENTRIES])
 
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True
+        autospec=True,
     )
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
     )
     def test_log_list(
-            self, mock_Credentials, mock_Resource_Manager, mock_Client
+        self, mock_Credentials, mock_Resource_Manager, mock_Client
     ):
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
@@ -598,7 +595,8 @@ class ReaderTests(TestCase):
         mock_project1 = MagicMock(project_id='yoyodyne-102010')
         mock_project2 = MagicMock(project_id='proj2')
         resource_client.list_projects.return_value = [
-            mock_project1, mock_project2
+            mock_project1,
+            mock_project2,
         ]
         mock_Resource_Manager.Client.return_value = resource_client
 
@@ -623,7 +621,7 @@ class ReaderTests(TestCase):
         log_string = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
         self.assertEqual(
             reader.log_list,
-            [log_string.format('yoyodyne-102010'), log_string.format('proj2')]
+            [log_string.format('yoyodyne-102010'), log_string.format('proj2')],
         )
 
         # no project_list uses client list
@@ -634,8 +632,7 @@ class ReaderTests(TestCase):
             collect_multiple_projects=False,
         )
         self.assertEqual(
-            reader.log_list,
-            [log_string.format('yoyodyne-102010')]
+            reader.log_list, [log_string.format('yoyodyne-102010')]
         )
 
 
@@ -660,7 +657,7 @@ class AggregationTests(TestCase):
             12,  # Packets doubled
             1512,  # Bytes doubled
             datetime(2018, 4, 2, 13, 47, 32),  # Earliest start
-            datetime(2018, 4, 4, 13, 47, 33)  # Latest finish
+            datetime(2018, 4, 4, 13, 47, 33),  # Latest finish
         )
         self.assertEqual(actual, expected)
 
@@ -669,7 +666,7 @@ class AggregationTests(TestCase):
         key_fields = ['src_port', 'protocol']
         output_records = sorted(
             aggregated_records(input_records, key_fields),
-            key=lambda x: x.src_port
+            key=lambda x: x.src_port,
         )
         self.assertEqual(len(output_records), 2)
         actual = output_records[0]
@@ -679,7 +676,7 @@ class AggregationTests(TestCase):
             26,
             1776,
             datetime(2018, 4, 3, 13, 47, 31),
-            datetime(2018, 4, 3, 13, 48, 33)
+            datetime(2018, 4, 3, 13, 48, 33),
         )
         self.assertEqual(tuple(actual), expected)
 
@@ -730,11 +727,7 @@ class MainCLITests(TestCase):
         with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
             cli_module.action_ipset(self.reader)
             actual = mock_stdout.getvalue()
-        expected = (
-            '192.0.2.2\n'
-            '192.0.2.3\n'
-            '198.51.100.75\n'
-        )
+        expected = '192.0.2.2\n' '192.0.2.3\n' '198.51.100.75\n'
         self.assertEqual(actual, expected)
 
     def test_action_findip(self):
@@ -765,7 +758,7 @@ class MainCLITests(TestCase):
 
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True
+        autospec=True,
     )
     def test_main(self, mock_Resource_Manager):
         patch_path = (
@@ -776,9 +769,12 @@ class MainCLITests(TestCase):
             mock_Client.return_value.list_entries.return_value = MockIterator()
 
             argv = [
-                '--start-time', '2018-04-03 12:00:00',
-                '--end-time', '2018-04-03 13:00:00',
-                '--filters', 'jsonPayload.src_ip="198.51.100.1"',
+                '--start-time',
+                '2018-04-03 12:00:00',
+                '--end-time',
+                '2018-04-03 13:00:00',
+                '--filters',
+                'jsonPayload.src_ip="198.51.100.1"',
             ]
             with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
                 cli_module.main(argv)
@@ -789,14 +785,14 @@ class MainCLITests(TestCase):
 
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True
+        autospec=True,
     )
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client',
-        autospec=TestClient
+        autospec=TestClient,
     )
     def test_main_multi_project_argument(
-            self, mock_Client, mock_Resource_Manager
+        self, mock_Client, mock_Resource_Manager
     ):
         mock_Client.return_value.project = 'yoyodyne-102010'
         mock_Client.return_value.list_entries.return_value = MockIterator()
@@ -806,10 +802,13 @@ class MainCLITests(TestCase):
         mock_Resource_Manager.Client.return_value = resource_client
 
         argv = [
-            '--start-time', '2018-04-03 12:00:00',
-            '--end-time', '2018-04-03 13:00:00',
-            '--filters', 'jsonPayload.src_ip="198.51.100.1"',
-            '--collect-multiple-projects'
+            '--start-time',
+            '2018-04-03 12:00:00',
+            '--end-time',
+            '2018-04-03 13:00:00',
+            '--filters',
+            'jsonPayload.src_ip="198.51.100.1"',
+            '--collect-multiple-projects',
         ]
         with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
             cli_module.main(argv)
@@ -817,6 +816,5 @@ class MainCLITests(TestCase):
         expected_len = 4
         self.assertEqual(actual_len, expected_len)
         self.assertIn(
-            call().list_projects(),
-            mock_Resource_Manager.Client.mock_calls
+            call().list_projects(), mock_Resource_Manager.Client.mock_calls
         )

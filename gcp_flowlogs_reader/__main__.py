@@ -34,7 +34,7 @@ def print_record(record):
         record.end_time.strftime('%Y-%m-%dT%H:%M:%S'),
         record.bytes_sent,
         record.packets_sent,
-        sep='\t'
+        sep='\t',
     )
 
 
@@ -77,9 +77,8 @@ def action_findip(reader, *args):
     target_ips = set(args)
     print_header()
     for record in reader:
-        if (
-            (str(record.src_ip) in target_ips) or
-            (str(record.dest_ip) in target_ips)
+        if (str(record.src_ip) in target_ips) or (
+            str(record.dest_ip) in target_ips
         ):
             print_record(record)
 
@@ -130,47 +129,47 @@ def main(argv=None):
         type=str,
         nargs='*',
         default=['print'],
-        help='action to take on log records'
+        help='action to take on log records',
     )
     parser.add_argument(
         '--start-time',
         '-s',
         type=str,
-        help='filter for records at or after this time (default: one hour ago)'
+        help='filter for records at or after this time (default: one hour ago)',
     )
     parser.add_argument(
         '--end-time',
         '-e',
         type=str,
-        help='filter stream records before this time (default: now)'
+        help='filter stream records before this time (default: now)',
     )
     parser.add_argument(
         '--time-format',
         type=str,
         default='%Y-%m-%d %H:%M:%S',
-        help='how to interpret the --start-time and --end-time arguments '
+        help='how to interpret the --start-time and --end-time arguments ',
     )
     parser.add_argument(
         '--filters',
         type=str,
-        help='additional filters to be applied server-side'
+        help='additional filters to be applied server-side',
     )
     parser.add_argument(
         '--credentials-file',
         type=str,
         help='path to a JSON file with service account credentials '
-        '(default uses the GOOGLE_APPLICATION_CREDENTIALS variable)'
+        '(default uses the GOOGLE_APPLICATION_CREDENTIALS variable)',
     )
     parser.add_argument(
         '--collect-multiple-projects',
         action='store_true',
-        help='whether or not to collect flows from multiple projects'
+        help='whether or not to collect flows from multiple projects',
     )
     parser.add_argument(
         '--log-name',
         type=str,
         help='name of the StackDriver log name to read '
-        '(default matches the project name)'
+        '(default matches the project name)',
     )
     args = parser.parse_args(argv)
 
