@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='gcp_flowlogs_reader',
-    version='0.6.1',
+    version='0.6.2',
     license='Apache',
     url='https://github.com/obsrvbl/gcp-flowlogs-reader',
     description='Reader for Google Cloud VPC Flow Logs',
