@@ -135,7 +135,9 @@ def main(argv=None):
         '--start-time',
         '-s',
         type=str,
-        help='filter for records at or after this time (default: one hour ago)',
+        help=(
+            'filter for records at or after this time (default: one hour ago)'
+        ),
     )
     parser.add_argument(
         '--end-time',
