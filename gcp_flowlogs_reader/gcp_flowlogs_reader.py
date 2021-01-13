@@ -133,7 +133,7 @@ class Reader:
         service_account_json=None,
         service_account_info=None,
         page_size=1000,
-        **kwargs
+        **kwargs,
     ):
         # If a Client instance is provided, use it.
         if logging_client:
@@ -227,8 +227,9 @@ class Reader:
         for project in self.project_list:
             try:
                 iterator = self.logging_client.list_entries(
-                    filter_=expression, page_size=self.page_size,
-                    projects=[project]  # only collects current project flows
+                    filter_=expression,
+                    page_size=self.page_size,
+                    projects=[project],  # only collects current project flows
                 )
                 for page in iterator.pages:
                     for flow_entry in page:
