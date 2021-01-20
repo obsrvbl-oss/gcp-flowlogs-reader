@@ -511,7 +511,11 @@ class ReaderTests(TestCase):
         mock_list_calls = mock_Client.return_value.list_entries.mock_calls
         for proj in project_list:
             self.assertIn(
-                call(filter_=expression, page_size=1000, resource_names=[proj]),
+                call(
+                    filter_=expression,
+                    page_size=1000,
+                    resource_names=[proj],
+                ),
                 mock_list_calls,
             )
 
