@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from ipaddress import ip_address
 
 from google.api_core.exceptions import GoogleAPIError
-from google.cloud import logging as gcp_logging, resource_manager
+from google.cloud import logging_v2 as gcp_logging, resource_manager
 from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'

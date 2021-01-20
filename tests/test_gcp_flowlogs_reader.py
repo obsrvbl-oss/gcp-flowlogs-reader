@@ -11,8 +11,8 @@ from google.api_core.exceptions import (
     PermissionDenied,
     NotFound,
 )
-from google.cloud.logging import Client
-from google.cloud.logging.entries import StructEntry
+from google.cloud.logging_v2 import Client
+from google.cloud.logging_v2.entries import StructEntry
 from google.oauth2.service_account import Credentials
 
 from gcp_flowlogs_reader.aggregation import aggregated_records
