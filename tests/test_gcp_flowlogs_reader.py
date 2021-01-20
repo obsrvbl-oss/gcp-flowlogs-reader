@@ -428,7 +428,9 @@ class ReaderTests(TestCase):
             'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
         )
         mock_Client.return_value.list_entries.assert_called_once_with(
-            filter_=expression, page_size=1000, projects=['yoyodyne-102010']
+            filter_=expression,
+            page_size=1000,
+            resource_names=['yoyodyne-102010'],
         )
 
     @patch(
@@ -509,7 +511,7 @@ class ReaderTests(TestCase):
         mock_list_calls = mock_Client.return_value.list_entries.mock_calls
         for proj in project_list:
             self.assertIn(
-                call(filter_=expression, page_size=1000, projects=[proj]),
+                call(filter_=expression, page_size=1000, resource_names=[proj]),
                 mock_list_calls,
             )
 

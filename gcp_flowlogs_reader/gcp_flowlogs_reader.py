@@ -229,7 +229,7 @@ class Reader:
                 iterator = self.logging_client.list_entries(
                     filter_=expression,
                     page_size=self.page_size,
-                    projects=[project],  # only collects current project flows
+                    resource_names=[project],  # only collects current project flows
                 )
                 for page in iterator.pages:
                     for flow_entry in page:
