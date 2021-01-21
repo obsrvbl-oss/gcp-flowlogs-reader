@@ -127,19 +127,25 @@ def main(argv=None):
         help='action to take on log records',
     )
     parser.add_argument(
-        '--start-time',
         '-s',
+        '--start-time',
+        metavar='WHEN',
         help='filter for records at or after this time (default: one hour ago)',
     )
     parser.add_argument(
-        '--end-time',
         '-e',
+        '--end-time',
+        metavar='WHEN',
         help='filter stream records before this time (default: now)',
     )
     parser.add_argument(
         '--time-format',
         default='%Y-%m-%d %H:%M:%S',
-        help='how to interpret the --start-time and --end-time arguments ',
+        metavar='FORMAT',
+        help=(
+            'interpret --start-time and --end-time using this strftime(3) format '
+            '(default: "%(default)s")'
+        ),
     )
     parser.add_argument(
         '--filters',
@@ -147,22 +153,21 @@ def main(argv=None):
     )
     parser.add_argument(
         '--credentials-file',
+        metavar='FILE',
         help=(
             'path to a JSON file with service account credentials '
-            '(default uses the GOOGLE_APPLICATION_CREDENTIALS variable)'
+            '(default: use the GOOGLE_APPLICATION_CREDENTIALS environment variable)'
         ),
     )
     parser.add_argument(
         '--collect-multiple-projects',
         action='store_true',
-        help='whether or not to collect flows from multiple projects',
+        help='collect flows from multiple projects',
     )
     parser.add_argument(
         '--log-name',
-        help=(
-            'name of the StackDriver log name to read '
-            '(default matches the project name)'
-        ),
+        metavar='NAME',
+        help='name of the StackDriver log name to read (default: use the project name)',
     )
     args = parser.parse_args(argv)
 

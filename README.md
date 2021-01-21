@@ -59,7 +59,7 @@ To change the default one-hour lookback, set `--start-time` or `--end-time`.
 
 The default format is `%Y-%m-%d %H:%M:%S` and assumes the UTC time zone.
 You can change it with the `--time-format` switch.
-See the Python documentation for
+See `strftime(3)` or the Python documentation for
 [`strptime`](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior)
 for information on constructing format strings.
 
