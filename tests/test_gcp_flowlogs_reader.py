@@ -130,42 +130,6 @@ SAMPLE_PAYLODS = [
 SAMPLE_ENTRIES = [StructEntry(x, None) for x in SAMPLE_PAYLODS]
 
 
-class MockIterator:
-    def __init__(self):
-        self.pages = (
-            [SAMPLE_ENTRIES[0], SAMPLE_ENTRIES[1]],
-            [SAMPLE_ENTRIES[2]],
-        )
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return ''
-
-
-class MockFailedIterator:
-    def __init__(self):
-        self.pages = self
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        raise PermissionDenied('403 The caller does not have permission')
-
-
-class MockNotFoundIterator:
-    def __init__(self):
-        self.pages = self
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        raise NotFound('404 Project does not exist: project-name')
-
-
 class TestClient(Client):
     _credentials = ''
 
@@ -407,7 +371,7 @@ class ReaderTests(TestCase):
 
     def test_iteration(self, mock_Client):
         mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = MockIterator()
+        mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -449,17 +413,7 @@ class ReaderTests(TestCase):
 
         log_client = MagicMock(TestClient)
         log_client.project = 'yoyodyne-102010'
-        proj1_iterator = MockIterator()
-        proj1_iterator.pages = [[SAMPLE_ENTRIES[0]]]
-        proj2_iterator = MockIterator()
-        proj2_iterator.pages = [[SAMPLE_ENTRIES[1]]]
-        proj3_iterator = MockIterator()
-        proj3_iterator.pages = [[SAMPLE_ENTRIES[2]]]
-        log_client.list_entries.side_effect = [
-            proj1_iterator,
-            proj2_iterator,
-            proj3_iterator,
-        ]
+        log_client.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
         mock_Client.return_value = log_client
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
@@ -529,7 +483,7 @@ class ReaderTests(TestCase):
         resource_client.list_projects.side_effect = [GoogleAPIError]
         log_client = MagicMock(TestClient)
         log_client.project = 'yoyodyne-102010'
-        log_client.list_entries.return_value = MockIterator()
+        log_client.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
         mock_Client.return_value = log_client
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -557,9 +511,9 @@ class ReaderTests(TestCase):
         log_client = MagicMock(TestClient)
         log_client.project = 'proj1'
         log_client.list_entries.side_effect = [
-            MockFailedIterator(),
-            MockIterator(),
-            MockNotFoundIterator(),
+            PermissionDenied(''),
+            iter(SAMPLE_ENTRIES[:2]),
+            NotFound(''),
         ]
         mock_Client.return_value = log_client
         earlier = datetime(2018, 4, 3, 9, 51, 22)
@@ -595,7 +549,7 @@ class ReaderTests(TestCase):
         mock_Credentials.from_service_account_info.return_value = creds
 
         mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = MockIterator()
+        mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
 
         resource_client = MagicMock()
         mock_project1 = MagicMock(project_id='yoyodyne-102010')
@@ -694,7 +648,7 @@ class MainCLITests(TestCase):
         )
         with patch(patch_path, autospec=True) as mock_Client:
             mock_Client.return_value.project = 'yoyodyne-102010'
-            mock_Client.return_value.list_entries.return_value = MockIterator()
+            mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
             self.reader = Reader()
 
     def test_action_print(self):
@@ -772,7 +726,7 @@ class MainCLITests(TestCase):
         )
         with patch(patch_path, autospec=TestClient) as mock_Client:
             mock_Client.return_value.project = 'yoyodyne-102010'
-            mock_Client.return_value.list_entries.return_value = MockIterator()
+            mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
 
             argv = [
                 '--start-time',
@@ -801,7 +755,7 @@ class MainCLITests(TestCase):
         self, mock_Client, mock_Resource_Manager
     ):
         mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = MockIterator()
+        mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
         resource_client = MagicMock()
         mock_project1 = MagicMock(project_id='yoyodyne-102010')
         resource_client.list_projects.return_value = [mock_project1]
