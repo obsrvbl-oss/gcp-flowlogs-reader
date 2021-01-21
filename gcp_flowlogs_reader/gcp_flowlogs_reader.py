@@ -225,13 +225,12 @@ class Reader:
 
         for project in self.project_list:
             try:
-                iterator = self.logging_client.list_entries(
+                for flow_entry in self.logging_client.list_entries(
                     filter_=' AND '.join(filters),
                     page_size=self.page_size,
-                    resource_names=[project],  # only current project flows
-                )
-                for page in iterator.pages:
-                    for flow_entry in page:
-                        yield FlowRecord(flow_entry)
+                    # only collect current project flows:
+                    resource_names=[f'projects/{project}'],
+                ):
+                    yield FlowRecord(flow_entry)
             except GoogleAPIError:  # Expected for removed/restricted projects
                 pass
