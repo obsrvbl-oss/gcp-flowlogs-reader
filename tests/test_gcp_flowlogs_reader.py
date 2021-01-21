@@ -371,7 +371,9 @@ class ReaderTests(TestCase):
 
     def test_iteration(self, mock_Client):
         mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+        mock_Client.return_value.list_entries.return_value = iter(
+            SAMPLE_ENTRIES
+        )
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -549,7 +551,9 @@ class ReaderTests(TestCase):
         mock_Credentials.from_service_account_info.return_value = creds
 
         mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+        mock_Client.return_value.list_entries.return_value = iter(
+            SAMPLE_ENTRIES
+        )
 
         resource_client = MagicMock()
         mock_project1 = MagicMock(project_id='yoyodyne-102010')
@@ -648,7 +652,9 @@ class MainCLITests(TestCase):
         )
         with patch(patch_path, autospec=True) as mock_Client:
             mock_Client.return_value.project = 'yoyodyne-102010'
-            mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+            mock_Client.return_value.list_entries.return_value = iter(
+                SAMPLE_ENTRIES
+            )
             self.reader = Reader()
 
     def test_action_print(self):
@@ -726,7 +732,9 @@ class MainCLITests(TestCase):
         )
         with patch(patch_path, autospec=TestClient) as mock_Client:
             mock_Client.return_value.project = 'yoyodyne-102010'
-            mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+            mock_Client.return_value.list_entries.return_value = iter(
+                SAMPLE_ENTRIES
+            )
 
             argv = [
                 '--start-time',
@@ -755,7 +763,9 @@ class MainCLITests(TestCase):
         self, mock_Client, mock_Resource_Manager
     ):
         mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+        mock_Client.return_value.list_entries.return_value = iter(
+            SAMPLE_ENTRIES
+        )
         resource_client = MagicMock()
         mock_project1 = MagicMock(project_id='yoyodyne-102010')
         resource_client.list_projects.return_value = [mock_project1]
