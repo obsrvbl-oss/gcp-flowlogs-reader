@@ -80,11 +80,12 @@ class FlowRecord:
 
     def __eq__(self, other):
         try:
-            return all(
-                getattr(self, x) == getattr(other, x) for x in self.__slots__
-            )
+            for x in self.__slots__:
+                if getattr(self, x) != getattr(other, x):
+                    return False
         except AttributeError:
             return False
+        return True
 
     def __hash__(self):
         return hash(tuple(getattr(self, x) for x in self.__slots__))
