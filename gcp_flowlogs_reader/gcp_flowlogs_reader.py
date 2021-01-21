@@ -1,4 +1,3 @@
-from collections import namedtuple
 from datetime import datetime, timedelta
 from ipaddress import ip_address, IPv4Address, IPv6Address
 from typing import NamedTuple, Optional, Union, Any
@@ -9,15 +8,25 @@ from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
 
-InstanceDetails = namedtuple(
-    'InstanceDetails', ['project_id', 'vm_name', 'region', 'zone']
-)
-VpcDetails = namedtuple(
-    'VpcDetails', ['project_id', 'vpc_name', 'subnetwork_name']
-)
-GeographicDetails = namedtuple(
-    'GeographicDetails', ['continent', 'country', 'region', 'city']
-)
+
+class InstanceDetails(NamedTuple):
+    project_id: str
+    vm_name: str
+    region: str
+    zone: str
+
+
+class VpcDetails(NamedTuple):
+    project_id: str
+    vpc_name: str
+    subnetwork_name: str
+
+
+class GeographicDetails(NamedTuple):
+    continent: str
+    country: str
+    region: str
+    city: str
 
 
 class FlowRecord:
