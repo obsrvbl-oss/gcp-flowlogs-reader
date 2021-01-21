@@ -75,7 +75,8 @@ class FlowRecord:
             else:
                 setattr(self, attr, value)
 
-    def _get_dt(self, value):
+    @staticmethod
+    def _get_dt(value):
         return datetime.strptime(value[:19], '%Y-%m-%dT%H:%M:%S')
 
     def __eq__(self, other):
@@ -189,13 +190,14 @@ class Reader:
     def __next__(self):
         return next(self.iterator)
 
-    def _format_dt(self, dt):
+    @staticmethod
+    def _format_dt(dt):
         return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    def _get_project_list(self, log_client):
-        credentials = log_client._credentials
+    @staticmethod
+    def _get_project_list(log_client):
         try:
-            client = resource_manager.Client(credentials=credentials)
+            client = resource_manager.Client(credentials=log_client._credentials)
             project_list = [x.project_id for x in client.list_projects()]
         except GoogleAPIError:  # no permission to collect other projects
             return [log_client.project]
