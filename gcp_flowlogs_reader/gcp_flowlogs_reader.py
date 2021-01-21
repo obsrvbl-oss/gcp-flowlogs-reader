@@ -210,17 +210,17 @@ class Reader:
         payload_end = self._format_dt(self.end_time)
 
         log_filters = [
-            'logName="{}"'.format(log_elm) for log_elm in self.log_list
+            f'logName="{log_elm}"' for log_elm in self.log_list
         ]
         full_log_filter = ' OR '.join(log_filters)
 
         filters = self.filters[:] + [
             'resource.type="gce_subnetwork"',
-            '({})'.format(full_log_filter),
-            'Timestamp >= "{}"'.format(timestamp_start),
-            'Timestamp < "{}"'.format(timestamp_end),
-            'jsonPayload.start_time >= "{}"'.format(payload_start),
-            'jsonPayload.start_time < "{}"'.format(payload_end),
+            f'({full_log_filter})',
+            f'Timestamp >= "{timestamp_start}"',
+            f'Timestamp < "{timestamp_end}"',
+            f'jsonPayload.start_time >= "{payload_start}"',
+            f'jsonPayload.start_time < "{payload_end}"',
         ]
 
         for project in self.project_list:

@@ -178,7 +178,7 @@ def main(argv=None):
     try:
         action_method = actions[action]
     except KeyError:
-        print('unknown action: {}'.format(action), file=sys.stderr)
+        print(f'unknown action: {action}', file=sys.stderr)
         print('known actions: {}'.format(', '.join(actions)), file=sys.stderr)
         return
 
