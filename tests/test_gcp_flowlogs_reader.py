@@ -236,9 +236,7 @@ class FlowRecordTests(TestCase):
                 self.assertEqual(type(actual), type(expected))
 
     def test_eq(self):
-        self.assertEqual(
-            FlowRecord(SAMPLE_ENTRIES[0]), FlowRecord(SAMPLE_ENTRIES[0])
-        )
+        self.assertEqual(FlowRecord(SAMPLE_ENTRIES[0]), FlowRecord(SAMPLE_ENTRIES[0]))
         self.assertNotEqual(
             FlowRecord(SAMPLE_ENTRIES[0]), FlowRecord(SAMPLE_ENTRIES[1])
         )
@@ -318,9 +316,7 @@ class ReaderTests(TestCase):
         self.assertEqual(mock_Client.call_count, 0)
         self.assertIs(reader.logging_client, logging_client)
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
-    )
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True)
     def test_init_with_credentials_info(self, mock_Credentials, mock_Client):
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
@@ -332,14 +328,10 @@ class ReaderTests(TestCase):
 
         Reader(service_account_info={'foo': 1})
 
-        mock_Credentials.from_service_account_info.assert_called_once_with(
-            {'foo': 1}
-        )
+        mock_Credentials.from_service_account_info.assert_called_once_with({'foo': 1})
         mock_Client.assert_called_once_with(project='proj1', credentials=creds)
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
-    )
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True)
     def test_init_with_credentials_info_and_project(
         self, mock_Credentials, mock_Client
     ):
@@ -356,9 +348,7 @@ class ReaderTests(TestCase):
         # The request is for a third one, which we'll use
         Reader(service_account_info={'foo': 1}, project='proj3')
 
-        mock_Credentials.from_service_account_info.assert_called_once_with(
-            {'foo': 1}
-        )
+        mock_Credentials.from_service_account_info.assert_called_once_with({'foo': 1})
         mock_Client.assert_called_once_with(project='proj3', credentials=creds)
 
     def test_init_with_credentials_json(self, mock_Client):
@@ -437,9 +427,7 @@ class ReaderTests(TestCase):
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
         autospec=True,
     )
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
-    )
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True)
     def test_multiple_projects(
         self, mock_Credentials, mock_Resource_Manager, mock_Client
     ):
@@ -484,9 +472,7 @@ class ReaderTests(TestCase):
             collect_multiple_projects=True,
         )
 
-        mock_Credentials.from_service_account_info.assert_called_once_with(
-            {'foo': 1}
-        )
+        mock_Credentials.from_service_account_info.assert_called_once_with({'foo': 1})
         mock_Client.assert_called_once_with(project='proj1', credentials=creds)
 
         # Test for flows getting created
@@ -538,9 +524,7 @@ class ReaderTests(TestCase):
             end_time=later,
             collect_multiple_projects=True,
         )
-        self.assertEqual(
-            reader.log_list, [BASE_LOG_NAME.format('yoyodyne-102010')]
-        )
+        self.assertEqual(reader.log_list, [BASE_LOG_NAME.format('yoyodyne-102010')])
 
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
@@ -584,12 +568,8 @@ class ReaderTests(TestCase):
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
         autospec=True,
     )
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
-    )
-    def test_log_list(
-        self, mock_Credentials, mock_Resource_Manager, mock_Client
-    ):
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True)
+    def test_log_list(self, mock_Credentials, mock_Resource_Manager, mock_Client):
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
         mock_Credentials.from_service_account_info.return_value = creds
@@ -637,9 +617,7 @@ class ReaderTests(TestCase):
             service_account_info={'foo': 1},
             collect_multiple_projects=False,
         )
-        self.assertEqual(
-            reader.log_list, [log_string.format('yoyodyne-102010')]
-        )
+        self.assertEqual(reader.log_list, [log_string.format('yoyodyne-102010')])
 
 
 class AggregationTests(TestCase):
@@ -689,9 +667,7 @@ class AggregationTests(TestCase):
 
 class MainCLITests(TestCase):
     def setUp(self):
-        patch_path = (
-            'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
-        )
+        patch_path = 'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
         with patch(patch_path, autospec=True) as mock_Client:
             mock_Client.return_value.project = 'yoyodyne-102010'
             mock_Client.return_value.list_entries.return_value = MockIterator()
@@ -767,9 +743,7 @@ class MainCLITests(TestCase):
         autospec=True,
     )
     def test_main(self, mock_Resource_Manager):
-        patch_path = (
-            'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
-        )
+        patch_path = 'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
         with patch(patch_path, autospec=TestClient) as mock_Client:
             mock_Client.return_value.project = 'yoyodyne-102010'
             mock_Client.return_value.list_entries.return_value = MockIterator()
@@ -797,9 +771,7 @@ class MainCLITests(TestCase):
         'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client',
         autospec=TestClient,
     )
-    def test_main_multi_project_argument(
-        self, mock_Client, mock_Resource_Manager
-    ):
+    def test_main_multi_project_argument(self, mock_Client, mock_Resource_Manager):
         mock_Client.return_value.project = 'yoyodyne-102010'
         mock_Client.return_value.list_entries.return_value = MockIterator()
         resource_client = MagicMock()
@@ -821,6 +793,4 @@ class MainCLITests(TestCase):
             actual_len = len(mock_stdout.getvalue().splitlines())
         expected_len = 4
         self.assertEqual(actual_len, expected_len)
-        self.assertIn(
-            call().list_projects(), mock_Resource_Manager.Client.mock_calls
-        )
+        self.assertIn(call().list_projects(), mock_Resource_Manager.Client.mock_calls)

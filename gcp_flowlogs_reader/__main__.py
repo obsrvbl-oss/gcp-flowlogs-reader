@@ -77,9 +77,7 @@ def action_findip(reader, *args):
     target_ips = set(args)
     print_header()
     for record in reader:
-        if (str(record.src_ip) in target_ips) or (
-            str(record.dest_ip) in target_ips
-        ):
+        if (str(record.src_ip) in target_ips) or (str(record.dest_ip) in target_ips):
             print_record(record)
 
 
@@ -121,9 +119,7 @@ def get_reader(args):
 
 def main(argv=None):
     argv = argv or sys.argv[1:]
-    parser = ArgumentParser(
-        description='Read records from Google Cloud VPC Flow Logs'
-    )
+    parser = ArgumentParser(description='Read records from Google Cloud VPC Flow Logs')
     parser.add_argument(
         'action',
         type=str,
@@ -135,9 +131,7 @@ def main(argv=None):
         '--start-time',
         '-s',
         type=str,
-        help=(
-            'filter for records at or after this time (default: one hour ago)'
-        ),
+        help=('filter for records at or after this time (default: one hour ago)'),
     )
     parser.add_argument(
         '--end-time',
