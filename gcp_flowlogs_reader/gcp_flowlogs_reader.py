@@ -1,6 +1,7 @@
 from collections import namedtuple
 from datetime import datetime, timedelta
-from ipaddress import ip_address
+from ipaddress import ip_address, IPv4Address, IPv6Address
+from typing import NamedTuple, Optional, Union, Any
 
 from google.api_core.exceptions import GoogleAPIError
 from google.cloud import logging_v2 as gcp_logging, resource_manager
@@ -20,25 +21,25 @@ GeographicDetails = namedtuple(
 
 
 class FlowRecord:
-    __slots__ = [
-        'src_ip',
-        'src_port',
-        'dest_ip',
-        'dest_port',
-        'protocol',
-        'start_time',
-        'end_time',
-        'bytes_sent',
-        'packets_sent',
-        'rtt_msec',
-        'reporter',
-        'src_instance',
-        'dest_instance',
-        'src_vpc',
-        'dest_vpc',
-        'src_location',
-        'dest_location',
-    ]
+    src_ip: Union[IPv4Address, IPv6Address]
+    src_port: int
+    dest_ip: Union[IPv4Address, IPv6Address]
+    dest_port: int
+    protocol: int
+    start_time: datetime
+    end_time: datetime
+    bytes_sent: int
+    packets_sent: int
+    rtt_msec: Optional[int]
+    reporter: Any
+    src_instance: Optional[InstanceDetails]
+    dest_instance: Optional[InstanceDetails]
+    src_vpc: Optional[VpcDetails]
+    dest_vpc: Optional[VpcDetails]
+    src_location: Optional[GeographicDetails]
+    dest_location: Optional[GeographicDetails]
+
+    __slots__ = list(__annotations__)
 
     def __init__(self, entry):
         flow_payload = entry.payload or entry.log_name
