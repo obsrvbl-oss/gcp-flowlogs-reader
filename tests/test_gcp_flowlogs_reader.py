@@ -396,7 +396,7 @@ class ReaderTests(TestCase):
         mock_Client.return_value.list_entries.assert_called_once_with(
             filter_=expression,
             page_size=1000,
-            resource_names=['yoyodyne-102010'],
+            resource_names=['projects/yoyodyne-102010'],
         )
 
     @patch(
@@ -470,7 +470,7 @@ class ReaderTests(TestCase):
                 call(
                     filter_=expression,
                     page_size=1000,
-                    resource_names=[proj],
+                    resource_names=[f'projects/{proj}'],
                 ),
                 mock_list_calls,
             )
