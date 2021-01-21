@@ -102,9 +102,7 @@ class FlowRecord:
         )
 
     def __str__(self):
-        str_slots = self.__slots__[:9]
-        ret = ['{}: {}'.format(x, getattr(self, x)) for x in str_slots]
-        return ', '.join(ret)
+        return ', '.join(f'{x}: {getattr(self, x)}' for x in self.__slots__[:9])
 
     def to_dict(self):
         nt_types = (InstanceDetails, VpcDetails, GeographicDetails)
@@ -119,8 +117,7 @@ class FlowRecord:
 
     @classmethod
     def from_payload(cls, payload):
-        entry = gcp_logging.entries.StructEntry(payload, None)
-        return cls(entry)
+        return cls(gcp_logging.entries.StructEntry(payload, None))
 
 
 class Reader:
@@ -225,12 +222,11 @@ class Reader:
             'jsonPayload.start_time >= "{}"'.format(payload_start),
             'jsonPayload.start_time < "{}"'.format(payload_end),
         ]
-        expression = ' AND '.join(filters)
 
         for project in self.project_list:
             try:
                 iterator = self.logging_client.list_entries(
-                    filter_=expression,
+                    filter_=' AND '.join(filters),
                     page_size=self.page_size,
                     resource_names=[project],  # only current project flows
                 )
