@@ -13,11 +13,11 @@ For more information about VPC Flow Logs in Google Cloud, see
 
 ## Installation and authentication
 
-Clone this repository and run `python3 setup.py install` to install the
+Clone this repository and run `python setup.py install` to install the
 library.
 
 Once it's installed, the `gcp_flowlogs_reader` tool should be available to run.
-You may also invoke it with `python3 -m gcp_flowlogs_reader`.
+You may also invoke it with `python -m gcp_flowlogs_reader`.
 
 ```shell
 $ gcp_flowlogs_reader -h
