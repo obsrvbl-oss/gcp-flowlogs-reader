@@ -371,7 +371,7 @@ class ReaderTests(TestCase):
 
     def test_iteration(self, mock_Client):
         mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
+        mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:3])
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -413,7 +413,7 @@ class ReaderTests(TestCase):
 
         log_client = MagicMock(TestClient)
         log_client.project = 'yoyodyne-102010'
-        log_client.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
+        log_client.list_entries.return_value = iter(SAMPLE_ENTRIES[:3])
         mock_Client.return_value = log_client
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
@@ -483,7 +483,7 @@ class ReaderTests(TestCase):
         resource_client.list_projects.side_effect = [GoogleAPIError]
         log_client = MagicMock(TestClient)
         log_client.project = 'yoyodyne-102010'
-        log_client.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
+        log_client.list_entries.return_value = iter(SAMPLE_ENTRIES[:3])
         mock_Client.return_value = log_client
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -512,7 +512,7 @@ class ReaderTests(TestCase):
         log_client.project = 'proj1'
         log_client.list_entries.side_effect = [
             PermissionDenied(''),
-            iter(SAMPLE_ENTRIES[:2]),
+            iter(SAMPLE_ENTRIES[:3]),
             NotFound(''),
         ]
         mock_Client.return_value = log_client
@@ -549,7 +549,7 @@ class ReaderTests(TestCase):
         mock_Credentials.from_service_account_info.return_value = creds
 
         mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
+        mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:3])
 
         resource_client = MagicMock()
         mock_project1 = MagicMock(project_id='yoyodyne-102010')
@@ -648,7 +648,7 @@ class MainCLITests(TestCase):
         )
         with patch(patch_path, autospec=True) as mock_Client:
             mock_Client.return_value.project = 'yoyodyne-102010'
-            mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
+            mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:3])
             self.reader = Reader()
 
     def test_action_print(self):
@@ -726,7 +726,7 @@ class MainCLITests(TestCase):
         )
         with patch(patch_path, autospec=TestClient) as mock_Client:
             mock_Client.return_value.project = 'yoyodyne-102010'
-            mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
+            mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:3])
 
             argv = [
                 '--start-time',
@@ -755,7 +755,7 @@ class MainCLITests(TestCase):
         self, mock_Client, mock_Resource_Manager
     ):
         mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:2])
+        mock_Client.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES[:3])
         resource_client = MagicMock()
         mock_project1 = MagicMock(project_id='yoyodyne-102010')
         resource_client.list_projects.return_value = [mock_project1]
