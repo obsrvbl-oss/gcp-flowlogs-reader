@@ -229,7 +229,8 @@ class Reader:
                 for flow_entry in self.logging_client.list_entries(
                     filter_=expression,
                     page_size=self.page_size,
-                    resource_names=[f'projects/{project}'],  # only current project flows
+                    # only collect current project flows:
+                    resource_names=[f'projects/{project}'],
                 ):
                     yield FlowRecord(flow_entry)
             except GoogleAPIError:  # Expected for removed/restricted projects
