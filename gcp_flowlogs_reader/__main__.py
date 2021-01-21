@@ -131,7 +131,7 @@ def main(argv=None):
         '--start-time',
         '-s',
         type=str,
-        help=('filter for records at or after this time (default: one hour ago)'),
+        help='filter for records at or after this time (default: one hour ago)',
     )
     parser.add_argument(
         '--end-time',
@@ -153,8 +153,10 @@ def main(argv=None):
     parser.add_argument(
         '--credentials-file',
         type=str,
-        help='path to a JSON file with service account credentials '
-        '(default uses the GOOGLE_APPLICATION_CREDENTIALS variable)',
+        help=(
+            'path to a JSON file with service account credentials '
+            '(default uses the GOOGLE_APPLICATION_CREDENTIALS variable)'
+        ),
     )
     parser.add_argument(
         '--collect-multiple-projects',
@@ -164,8 +166,10 @@ def main(argv=None):
     parser.add_argument(
         '--log-name',
         type=str,
-        help='name of the StackDriver log name to read '
-        '(default matches the project name)',
+        help=(
+            'name of the StackDriver log name to read '
+            '(default matches the project name)'
+        ),
     )
     args = parser.parse_args(argv)
 
