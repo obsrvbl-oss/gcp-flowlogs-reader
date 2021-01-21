@@ -153,8 +153,7 @@ class Reader:
             self.logging_client = gcp_logging.Client(
                 credentials=gcp_credentials, **client_args
             )
-        # Failing that, use the GOOGLE_APPLICATION_CREDENTIALS environment
-        # variable.
+        # Failing that, use the GOOGLE_APPLICATION_CREDENTIALS environment variable.
         else:
             self.logging_client = gcp_logging.Client(**kwargs)
 
@@ -164,8 +163,8 @@ class Reader:
         else:
             self.project_list = [self.logging_client.project]
 
-        # The default list of logs is based on the project name and
-        # project list, but it can be overridden by providing it explicitly.
+        # The default list of logs is based on the project name and project list, but
+        # it can be overridden by providing it explicitly.
         if log_name:
             self.log_list = [log_name]
         else:
@@ -201,8 +200,8 @@ class Reader:
         return project_list
 
     def _reader(self):
-        # When filtering by time, use the indexed Timestamp field for fast
-        # searches, then filter for the payload timestamp.
+        # When filtering by time, use the indexed Timestamp field for fast searches,
+        # then filter for the payload timestamp.
         padding = timedelta(minutes=1)
         timestamp_start = self._format_dt(self.start_time - padding)
         timestamp_end = self._format_dt(self.end_time + padding)
