@@ -344,9 +344,7 @@ class ReaderTests(TestCase):
 
     def test_iteration(self, MockLoggingClient):
         MockLoggingClient.return_value.project = 'yoyodyne-102010'
-        MockLoggingClient.return_value.list_entries.return_value = iter(
-            SAMPLE_ENTRIES
-        )
+        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -381,9 +379,7 @@ class ReaderTests(TestCase):
         MockCredentials.from_service_account_info.return_value = creds
 
         MockLoggingClient.return_value.project = 'yoyodyne-102010'
-        MockLoggingClient.return_value.list_entries.return_value = iter(
-            SAMPLE_ENTRIES
-        )
+        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
 
         MockResourceManagerClient.return_value.list_projects.return_value = [
             MagicMock(project_id='proj1'),
@@ -433,7 +429,7 @@ class ReaderTests(TestCase):
 
     @patch(PREFIX('ResourceManagerClient'), autospec=True)
     def test_no_resource_manager_api(
-        self, MockResourceManagerClient, MockLoggingClient,
+        self, MockResourceManagerClient, MockLoggingClient
     ):
         MockResourceManagerClient.return_value.list_projects.side_effect = [
             GoogleAPIError,
@@ -549,7 +545,7 @@ class AggregationTests(TestCase):
                     datetime(2018, 4, 2, 13, 47, 32),  # Earliest start
                     datetime(2018, 4, 4, 13, 47, 33),  # Latest finish
                 ),
-            ]
+            ],
         )
 
     def test_custom_key(self):
@@ -577,7 +573,7 @@ class AggregationTests(TestCase):
                     datetime(2018, 4, 3, 13, 47, 37),
                     datetime(2018, 4, 3, 13, 47, 38),
                 ),
-            ]
+            ],
         )
 
 
@@ -603,7 +599,7 @@ class MainCLITests(TestCase):
             '192.0.2.2\t198.51.100.75\t3389\t49444\t6\t2018-04-03T13:47:32\t'
             '2018-04-03T13:47:33\t756\t6\n'
             '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
-            '2018-04-03T13:48:33\t1020\t20\n'
+            '2018-04-03T13:48:33\t1020\t20\n',
         )
 
     def test_action_print_limit(self):
@@ -614,7 +610,7 @@ class MainCLITests(TestCase):
             'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
             'start_time\tend_time\tbytes_sent\tpackets_sent\n'
             '198.51.100.75\t192.0.2.2\t49444\t3389\t6\t2018-04-03T13:47:37\t'
-            '2018-04-03T13:47:38\t491\t4\n'
+            '2018-04-03T13:47:38\t491\t4\n',
         )
 
     def test_action_print_error(self):
@@ -648,7 +644,7 @@ class MainCLITests(TestCase):
         self.assertEqual(
             output.getvalue(),
             'unknown action: frobulate\n'
-            'known actions: print, ipset, findip, aggregate\n'
+            'known actions: print, ipset, findip, aggregate\n',
         )
 
     @patch(PREFIX('ResourceManagerClient'), autospec=True)
@@ -678,9 +674,7 @@ class MainCLITests(TestCase):
         self, MockLoggingClient, MockResourceManagerClient
     ):
         MockLoggingClient.return_value.project = 'yoyodyne-102010'
-        MockLoggingClient.return_value.list_entries.return_value = iter(
-            SAMPLE_ENTRIES
-        )
+        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
         MockResourceManagerClient.return_value.list_projects.return_value = [
             MagicMock(project_id='yoyodyne-102010')
         ]
