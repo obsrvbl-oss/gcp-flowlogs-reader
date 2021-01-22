@@ -375,10 +375,10 @@ class ReaderTests(TestCase):
             resource_names=['projects/yoyodyne-102010'],
         )
 
-    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager', autospec=True)
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager.Client', autospec=True)
     @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True)
     def test_multiple_projects(
-        self, MockCredentials, mock_resource_manager, MockClient
+        self, MockCredentials, MockResourceManagerClient, MockClient
     ):
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
@@ -402,7 +402,7 @@ class ReaderTests(TestCase):
             mock_project3,
         ]
         project_list = ['proj1', 'proj2', 'proj3']
-        mock_resource_manager.Client.return_value = resource_client
+        MockResourceManagerClient.return_value = resource_client
 
         reader = Reader(
             start_time=earlier,
@@ -444,10 +444,10 @@ class ReaderTests(TestCase):
                 mock_list_calls,
             )
 
-    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager', autospec=True)
-    def test_no_resource_manager_api(self, mock_resource_manager, MockClient):
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager.Client', autospec=True)
+    def test_no_resource_manager_api(self, MockResourceManagerClient, MockClient):
         resource_client = MagicMock()
-        mock_resource_manager.Client.return_value = resource_client
+        MockResourceManagerClient.return_value = resource_client
         resource_client.list_projects.side_effect = [GoogleAPIError]
         log_client = MagicMock(TestClient)
         log_client.project = 'yoyodyne-102010'
@@ -462,10 +462,10 @@ class ReaderTests(TestCase):
         )
         self.assertEqual(reader.log_list, [BASE_LOG_NAME.format('yoyodyne-102010')])
 
-    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager', autospec=True)
-    def test_limited_project_access(self, mock_resource_manager, MockClient):
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager.Client', autospec=True)
+    def test_limited_project_access(self, MockResourceManagerClient, MockClient):
         resource_client = MagicMock()
-        mock_resource_manager.Client.return_value = resource_client
+        MockResourceManagerClient.return_value = resource_client
         resource_client.list_projects.return_value = [
             MagicMock(project_id='proj1'),
             MagicMock(project_id='proj2'),
@@ -497,9 +497,9 @@ class ReaderTests(TestCase):
         entry_list = list(reader)
         self.assertEqual(entry_list, [FlowRecord(x) for x in SAMPLE_ENTRIES])
 
-    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager', autospec=True)
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager.Client', autospec=True)
     @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True)
-    def test_log_list(self, MockCredentials, mock_resource_manager, MockClient):
+    def test_log_list(self, MockCredentials, MockResourceManagerClient, MockClient):
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
         MockCredentials.from_service_account_info.return_value = creds
@@ -511,7 +511,7 @@ class ReaderTests(TestCase):
         mock_project1 = MagicMock(project_id='yoyodyne-102010')
         mock_project2 = MagicMock(project_id='proj2')
         resource_client.list_projects.return_value = [mock_project1, mock_project2]
-        mock_resource_manager.Client.return_value = resource_client
+        MockResourceManagerClient.return_value = resource_client
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -665,8 +665,8 @@ class MainCLITests(TestCase):
         expected_len = 2
         self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
 
-    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager', autospec=True)
-    def test_main(self, mock_resource_manager):
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager.Client', autospec=True)
+    def test_main(self, MockResourceManagerClient):
         patch_path = 'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
         with patch(patch_path, autospec=TestClient) as MockClient:
             MockClient.return_value.project = 'yoyodyne-102010'
@@ -685,20 +685,20 @@ class MainCLITests(TestCase):
                 actual_len = len(mock_stdout.getvalue().splitlines())
         expected_len = 4
         self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
-        self.assertFalse(mock_resource_manager.Client.called)
+        self.assertFalse(MockResourceManagerClient.called)
 
-    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager', autospec=True)
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager.Client', autospec=True)
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client',
         autospec=TestClient,
     )
-    def test_main_multi_project_argument(self, MockClient, mock_resource_manager):
+    def test_main_multi_project_argument(self, MockClient, MockResourceManagerClient):
         MockClient.return_value.project = 'yoyodyne-102010'
         MockClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
         resource_client = MagicMock()
         mock_project1 = MagicMock(project_id='yoyodyne-102010')
         resource_client.list_projects.return_value = [mock_project1]
-        mock_resource_manager.Client.return_value = resource_client
+        MockResourceManagerClient.return_value = resource_client
 
         argv = [
             '--start-time',
@@ -714,4 +714,4 @@ class MainCLITests(TestCase):
             actual_len = len(mock_stdout.getvalue().splitlines())
         expected_len = 4
         self.assertEqual(actual_len, expected_len)
-        self.assertIn(call().list_projects(), mock_resource_manager.Client.mock_calls)
+        self.assertIn(call().list_projects(), MockResourceManagerClient.mock_calls)
