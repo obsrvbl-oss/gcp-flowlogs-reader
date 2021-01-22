@@ -111,12 +111,12 @@ VPC Flow Logs entry into a Python object with standard types:
 | packets_sent  | int                  | 13                                                                                                   |
 | rtt_msec      | int                  | 233                                                                                                  |
 | reporter      | str                  | 'SRC'                                                                                                |
-| src_instance  | NamedTuple           | InstanceDetails(project_id='yoyodyne-1020', vm_name='vm-1020', region='us-west1', zone='us-west1-a') |
-| dest_instance | NamedTuple           | InstanceDetails(project_id='yoyodyne-1020', vm_name='vm-1020', region='us-west1', zone='us-west1-a') |
-| src_vpc       | NamedTuple           | VpcDetails(project_id='yoyo-1020', vpc_name='prod-vpc-3', subnetwork_name='prod-net-3')              |
-| dest_vpc      | NamedTuple           | VpcDetails(project_id='yoyo-1020', vpc_name='prod-vpc-3', subnetwork_name='prod-net-3')              |
-| src_location  | NamedTuple           | GeographicDetails(continent='America', country='usa', region='California', city='Santa Teresa')      |
-| dest_location | NamedTuple           | GeographicDetails(continent='America', country='usa', region='California', city='Santa Teresa')      |
+| src_instance  | namedtuple           | InstanceDetails(project_id='yoyodyne-1020', vm_name='vm-1020', region='us-west1', zone='us-west1-a') |
+| dest_instance | namedtuple           | InstanceDetails(project_id='yoyodyne-1020', vm_name='vm-1020', region='us-west1', zone='us-west1-a') |
+| src_vpc       | namedtuple           | VpcDetails(project_id='yoyo-1020', vpc_name='prod-vpc-3', subnetwork_name='prod-net-3')              |
+| dest_vpc      | namedtuple           | VpcDetails(project_id='yoyo-1020', vpc_name='prod-vpc-3', subnetwork_name='prod-net-3')              |
+| src_location  | namedtuple           | GeographicDetails(continent='America', country='usa', region='California', city='Santa Teresa')      |
+| dest_location | namedtuple           | GeographicDetails(continent='America', country='usa', region='California', city='Santa Teresa')      |
 ```
 
 `gcp_flowlogs_reader.Reader` acts as an iterator over flows from the logs:
