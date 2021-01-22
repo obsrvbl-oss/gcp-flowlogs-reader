@@ -1,3 +1,4 @@
+from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime, timedelta
 from ipaddress import ip_address
 from io import StringIO
@@ -598,9 +599,9 @@ class MainCLITests(TestCase):
             self.reader = Reader()
 
     def test_action_print(self):
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with redirect_stdout(StringIO()) as output:
             cli_module.action_print(self.reader)
-            actual = mock_stdout.getvalue()
+            actual = output.getvalue()
         expected = (
             'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
             'start_time\tend_time\tbytes_sent\tpackets_sent\n'
@@ -614,9 +615,9 @@ class MainCLITests(TestCase):
         self.assertEqual(actual, expected)
 
     def test_action_print_limit(self):
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with redirect_stdout(StringIO()) as output:
             cli_module.action_print(self.reader, 1)
-            actual = mock_stdout.getvalue()
+            actual = output.getvalue()
         expected = (
             'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
             'start_time\tend_time\tbytes_sent\tpackets_sent\n'
@@ -630,16 +631,16 @@ class MainCLITests(TestCase):
             cli_module.action_print(self.reader, 1, 2)
 
     def test_action_ipset(self):
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with redirect_stdout(StringIO()) as output:
             cli_module.action_ipset(self.reader)
-            actual = mock_stdout.getvalue()
+            actual = output.getvalue()
         expected = '192.0.2.2\n' '192.0.2.3\n' '198.51.100.75\n'
         self.assertEqual(actual, expected)
 
     def test_action_findip(self):
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with redirect_stdout(StringIO()) as output:
             cli_module.action_findip(self.reader, '192.0.2.3')
-            actual = mock_stdout.getvalue()
+            actual = output.getvalue()
         expected = (
             'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
             'start_time\tend_time\tbytes_sent\tpackets_sent\n'
@@ -649,16 +650,16 @@ class MainCLITests(TestCase):
         self.assertEqual(actual, expected)
 
     def test_action_aggregate(self):
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with redirect_stdout(StringIO()) as output:
             cli_module.action_aggregate(self.reader)
-            actual_len = len(mock_stdout.getvalue().splitlines())
+            actual_len = len(output.getvalue().splitlines())
         expected_len = 4
         self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
 
     def test_main_error(self):
-        with patch('sys.stderr', new_callable=StringIO) as mock_stderr:
+        with redirect_stderr(StringIO()) as output:
             cli_module.main(['frobulate'])
-            actual_len = len(mock_stderr.getvalue().splitlines())
+            actual_len = len(output.getvalue().splitlines())
         expected_len = 2
         self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
 
@@ -676,9 +677,9 @@ class MainCLITests(TestCase):
                 '--filters',
                 'jsonPayload.src_ip="198.51.100.1"',
             ]
-            with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            with redirect_stdout(StringIO()) as output:
                 cli_module.main(argv)
-                actual_len = len(mock_stdout.getvalue().splitlines())
+                actual_len = len(output.getvalue().splitlines())
         expected_len = 4
         self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
         self.assertFalse(MockResourceManagerClient.called)
@@ -702,9 +703,9 @@ class MainCLITests(TestCase):
             'jsonPayload.src_ip="198.51.100.1"',
             '--collect-multiple-projects',
         ]
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with redirect_stdout(StringIO()) as output:
             cli_module.main(argv)
-            actual_len = len(mock_stdout.getvalue().splitlines())
+            actual_len = len(output.getvalue().splitlines())
         expected_len = 4
         self.assertEqual(actual_len, expected_len)
         self.assertIn(call().list_projects(), MockResourceManagerClient.mock_calls)
