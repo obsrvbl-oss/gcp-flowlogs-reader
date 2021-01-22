@@ -150,16 +150,10 @@ class FlowRecordTests(TestCase):
             ('rtt_msec', 61),
             ('reporter', 'DEST'),
             ('src_instance', None),
-            (
-                'dest_instance',
-                InstanceDetails(**SAMPLE_PAYLODS[0]['dest_instance']),
-            ),
+            ('dest_instance', InstanceDetails(**SAMPLE_PAYLODS[0]['dest_instance'])),
             ('src_vpc', None),
             ('dest_vpc', VpcDetails(**SAMPLE_PAYLODS[0]['dest_vpc'])),
-            (
-                'src_location',
-                GeographicDetails(**SAMPLE_PAYLODS[0]['src_location']),
-            ),
+            ('src_location', GeographicDetails(**SAMPLE_PAYLODS[0]['src_location'])),
             ('dest_location', None),
         ]:
             with self.subTest(attr=attr):
@@ -181,18 +175,12 @@ class FlowRecordTests(TestCase):
             ('packets_sent', 6),
             ('rtt_msec', None),
             ('reporter', 'SRC'),
-            (
-                'src_instance',
-                InstanceDetails(**SAMPLE_PAYLODS[1]['src_instance']),
-            ),
+            ('src_instance', InstanceDetails(**SAMPLE_PAYLODS[1]['src_instance'])),
             ('dest_instance', None),
             ('src_vpc', VpcDetails(**SAMPLE_PAYLODS[1]['src_vpc'])),
             ('dest_vpc', None),
             ('src_location', None),
-            (
-                'dest_location',
-                GeographicDetails(**SAMPLE_PAYLODS[1]['dest_location']),
-            ),
+            ('dest_location', GeographicDetails(**SAMPLE_PAYLODS[1]['dest_location'])),
         ]:
             with self.subTest(attr=attr):
                 actual = getattr(flow_record, attr)
@@ -361,9 +349,7 @@ class ReaderTests(TestCase):
 
     def test_iteration(self, MockClient):
         MockClient.return_value.project = 'yoyodyne-102010'
-        MockClient.return_value.list_entries.return_value = iter(
-            SAMPLE_ENTRIES
-        )
+        MockClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -389,10 +375,7 @@ class ReaderTests(TestCase):
             resource_names=['projects/yoyodyne-102010'],
         )
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True,
-    )
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager', autospec=True)
     @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True)
     def test_multiple_projects(
         self, MockCredentials, mock_resource_manager, MockClient
@@ -461,10 +444,7 @@ class ReaderTests(TestCase):
                 mock_list_calls,
             )
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True,
-    )
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager', autospec=True)
     def test_no_resource_manager_api(self, mock_resource_manager, MockClient):
         resource_client = MagicMock()
         mock_resource_manager.Client.return_value = resource_client
@@ -482,10 +462,7 @@ class ReaderTests(TestCase):
         )
         self.assertEqual(reader.log_list, [BASE_LOG_NAME.format('yoyodyne-102010')])
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True,
-    )
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager', autospec=True)
     def test_limited_project_access(self, mock_resource_manager, MockClient):
         resource_client = MagicMock()
         mock_resource_manager.Client.return_value = resource_client
@@ -520,10 +497,7 @@ class ReaderTests(TestCase):
         entry_list = list(reader)
         self.assertEqual(entry_list, [FlowRecord(x) for x in SAMPLE_ENTRIES])
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True,
-    )
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager', autospec=True)
     @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True)
     def test_log_list(self, MockCredentials, mock_resource_manager, MockClient):
         creds = MagicMock(Credentials)
@@ -531,17 +505,12 @@ class ReaderTests(TestCase):
         MockCredentials.from_service_account_info.return_value = creds
 
         MockClient.return_value.project = 'yoyodyne-102010'
-        MockClient.return_value.list_entries.return_value = iter(
-            SAMPLE_ENTRIES
-        )
+        MockClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
 
         resource_client = MagicMock()
         mock_project1 = MagicMock(project_id='yoyodyne-102010')
         mock_project2 = MagicMock(project_id='proj2')
-        resource_client.list_projects.return_value = [
-            mock_project1,
-            mock_project2,
-        ]
+        resource_client.list_projects.return_value = [mock_project1, mock_project2]
         mock_resource_manager.Client.return_value = resource_client
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
@@ -628,9 +597,7 @@ class MainCLITests(TestCase):
         patch_path = 'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
         with patch(patch_path, autospec=True) as MockClient:
             MockClient.return_value.project = 'yoyodyne-102010'
-            MockClient.return_value.list_entries.return_value = iter(
-                SAMPLE_ENTRIES
-            )
+            MockClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
             self.reader = Reader()
 
     def test_action_print(self):
@@ -698,17 +665,12 @@ class MainCLITests(TestCase):
         expected_len = 2
         self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True,
-    )
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager', autospec=True)
     def test_main(self, mock_resource_manager):
         patch_path = 'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
         with patch(patch_path, autospec=TestClient) as MockClient:
             MockClient.return_value.project = 'yoyodyne-102010'
-            MockClient.return_value.list_entries.return_value = iter(
-                SAMPLE_ENTRIES
-            )
+            MockClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
 
             argv = [
                 '--start-time',
@@ -725,19 +687,14 @@ class MainCLITests(TestCase):
         self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
         self.assertFalse(mock_resource_manager.Client.called)
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True,
-    )
+    @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager', autospec=True)
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client',
         autospec=TestClient,
     )
     def test_main_multi_project_argument(self, MockClient, mock_resource_manager):
         MockClient.return_value.project = 'yoyodyne-102010'
-        MockClient.return_value.list_entries.return_value = iter(
-            SAMPLE_ENTRIES
-        )
+        MockClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
         resource_client = MagicMock()
         mock_project1 = MagicMock(project_id='yoyodyne-102010')
         resource_client.list_projects.return_value = [mock_project1]
