@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from ipaddress import ip_address, IPv4Address, IPv6Address
-from typing import NamedTuple, Optional, Union, Any
+from typing import NamedTuple, Optional, Union
 
 from google.api_core.exceptions import GoogleAPIError
 from google.cloud.logging_v2 import Client as LoggingClient, StructEntry
@@ -41,7 +41,7 @@ class FlowRecord:
     bytes_sent: int
     packets_sent: int
     rtt_msec: Optional[int]
-    reporter: Any
+    reporter: str
     src_instance: Optional[InstanceDetails]
     dest_instance: Optional[InstanceDetails]
     src_vpc: Optional[VpcDetails]
