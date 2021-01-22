@@ -273,64 +273,64 @@ class FlowRecordTests(TestCase):
     autospec=TestClient,
 )
 class ReaderTests(TestCase):
-    def test_init_with_client(self, mock_Client):
+    def test_init_with_client(self, MockClient):
         logging_client = MagicMock(Client)
         logging_client.project = 'yoyodyne-102010'
         reader = Reader(logging_client=logging_client)
-        self.assertEqual(mock_Client.call_count, 0)
+        self.assertEqual(MockClient.call_count, 0)
         self.assertIs(reader.logging_client, logging_client)
 
     @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True)
-    def test_init_with_credentials_info(self, mock_Credentials, mock_Client):
+    def test_init_with_credentials_info(self, MockCredentials, MockClient):
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
-        mock_Credentials.from_service_account_info.return_value = creds
+        MockCredentials.from_service_account_info.return_value = creds
 
         client = MagicMock(Client)
         client.project = 'yoyodyne-102010'
-        mock_Client.return_value = client
+        MockClient.return_value = client
 
         Reader(service_account_info={'foo': 1})
 
-        mock_Credentials.from_service_account_info.assert_called_once_with({'foo': 1})
-        mock_Client.assert_called_once_with(project='proj1', credentials=creds)
+        MockCredentials.from_service_account_info.assert_called_once_with({'foo': 1})
+        MockClient.assert_called_once_with(project='proj1', credentials=creds)
 
     @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True)
     def test_init_with_credentials_info_and_project(
-        self, mock_Credentials, mock_Client
+        self, MockCredentials, MockClient
     ):
         # The credentials file specifies one project_id
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
-        mock_Credentials.from_service_account_info.return_value = creds
+        MockCredentials.from_service_account_info.return_value = creds
 
         # The client has another one, which will be ignored
         client = MagicMock(Client)
         client.project = 'proj2'
-        mock_Client.return_value = client
+        MockClient.return_value = client
 
         # The request is for a third one, which we'll use
         Reader(service_account_info={'foo': 1}, project='proj3')
 
-        mock_Credentials.from_service_account_info.assert_called_once_with({'foo': 1})
-        mock_Client.assert_called_once_with(project='proj3', credentials=creds)
+        MockCredentials.from_service_account_info.assert_called_once_with({'foo': 1})
+        MockClient.assert_called_once_with(project='proj3', credentials=creds)
 
-    def test_init_with_credentials_json(self, mock_Client):
+    def test_init_with_credentials_json(self, MockClient):
         with NamedTemporaryFile() as temp_file:
             path = temp_file.name
             Reader(service_account_json=path, project='yoyodyne-102010')
 
-        mock_Client.from_service_account_json.assert_called_once_with(
+        MockClient.from_service_account_json.assert_called_once_with(
             path, project='yoyodyne-102010'
         )
 
-    def test_init_with_environment(self, mock_Client):
-        mock_Client.return_value.project = 'yoyodyne-102010'
+    def test_init_with_environment(self, MockClient):
+        MockClient.return_value.project = 'yoyodyne-102010'
         Reader(project='yoyodyne-102010')
-        mock_Client.assert_called_once_with(project='yoyodyne-102010')
+        MockClient.assert_called_once_with(project='yoyodyne-102010')
 
-    def test_init_log_list(self, mock_Client):
-        mock_Client.return_value.project = 'yoyodyne-1020'
+    def test_init_log_list(self, MockClient):
+        MockClient.return_value.project = 'yoyodyne-1020'
 
         # Nothing specified - log name is derived from the project name
         normal_reader = Reader()
@@ -343,8 +343,8 @@ class ReaderTests(TestCase):
         custom_reader = Reader(log_name='custom-log')
         self.assertEqual(custom_reader.log_list, ['custom-log'])
 
-    def test_init_times(self, mock_Client):
-        mock_Client.return_value.project = 'yoyodyne-102010'
+    def test_init_times(self, MockClient):
+        MockClient.return_value.project = 'yoyodyne-102010'
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 22)
 
@@ -359,9 +359,9 @@ class ReaderTests(TestCase):
         self.assertNotEqual(reader.end_time, later)
         self.assertEqual(reader.start_time, earlier)
 
-    def test_iteration(self, mock_Client):
-        mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = iter(
+    def test_iteration(self, MockClient):
+        MockClient.return_value.project = 'yoyodyne-102010'
+        MockClient.return_value.list_entries.return_value = iter(
             SAMPLE_ENTRIES
         )
 
@@ -383,7 +383,7 @@ class ReaderTests(TestCase):
             'jsonPayload.start_time >= "2018-04-03T09:51:22Z" AND '
             'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
         )
-        mock_Client.return_value.list_entries.assert_called_once_with(
+        MockClient.return_value.list_entries.assert_called_once_with(
             filter_=expression,
             page_size=1000,
             resource_names=['projects/yoyodyne-102010'],
@@ -395,16 +395,16 @@ class ReaderTests(TestCase):
     )
     @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True)
     def test_multiple_projects(
-        self, mock_Credentials, mock_Resource_Manager, mock_Client
+        self, MockCredentials, mock_resource_manager, MockClient
     ):
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
-        mock_Credentials.from_service_account_info.return_value = creds
+        MockCredentials.from_service_account_info.return_value = creds
 
         log_client = MagicMock(TestClient)
         log_client.project = 'yoyodyne-102010'
         log_client.list_entries.return_value = iter(SAMPLE_ENTRIES)
-        mock_Client.return_value = log_client
+        MockClient.return_value = log_client
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -419,7 +419,7 @@ class ReaderTests(TestCase):
             mock_project3,
         ]
         project_list = ['proj1', 'proj2', 'proj3']
-        mock_Resource_Manager.Client.return_value = resource_client
+        mock_resource_manager.Client.return_value = resource_client
 
         reader = Reader(
             start_time=earlier,
@@ -428,8 +428,8 @@ class ReaderTests(TestCase):
             collect_multiple_projects=True,
         )
 
-        mock_Credentials.from_service_account_info.assert_called_once_with({'foo': 1})
-        mock_Client.assert_called_once_with(project='proj1', credentials=creds)
+        MockCredentials.from_service_account_info.assert_called_once_with({'foo': 1})
+        MockClient.assert_called_once_with(project='proj1', credentials=creds)
 
         # Test for flows getting created
         actual = list(reader)
@@ -450,7 +450,7 @@ class ReaderTests(TestCase):
             'jsonPayload.start_time >= "2018-04-03T09:51:22Z" AND '
             'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
         )
-        mock_list_calls = mock_Client.return_value.list_entries.mock_calls
+        mock_list_calls = MockClient.return_value.list_entries.mock_calls
         for proj in project_list:
             self.assertIn(
                 call(
@@ -465,14 +465,14 @@ class ReaderTests(TestCase):
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
         autospec=True,
     )
-    def test_no_resource_manager_api(self, mock_Resource_Manager, mock_Client):
+    def test_no_resource_manager_api(self, mock_resource_manager, MockClient):
         resource_client = MagicMock()
-        mock_Resource_Manager.Client.return_value = resource_client
+        mock_resource_manager.Client.return_value = resource_client
         resource_client.list_projects.side_effect = [GoogleAPIError]
         log_client = MagicMock(TestClient)
         log_client.project = 'yoyodyne-102010'
         log_client.list_entries.return_value = iter(SAMPLE_ENTRIES)
-        mock_Client.return_value = log_client
+        MockClient.return_value = log_client
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
         reader = Reader(
@@ -486,9 +486,9 @@ class ReaderTests(TestCase):
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
         autospec=True,
     )
-    def test_limited_project_access(self, mock_Resource_Manager, mock_Client):
+    def test_limited_project_access(self, mock_resource_manager, MockClient):
         resource_client = MagicMock()
-        mock_Resource_Manager.Client.return_value = resource_client
+        mock_resource_manager.Client.return_value = resource_client
         resource_client.list_projects.return_value = [
             MagicMock(project_id='proj1'),
             MagicMock(project_id='proj2'),
@@ -501,7 +501,7 @@ class ReaderTests(TestCase):
             iter(SAMPLE_ENTRIES),
             NotFound(''),
         ]
-        mock_Client.return_value = log_client
+        MockClient.return_value = log_client
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
         reader = Reader(
@@ -525,13 +525,13 @@ class ReaderTests(TestCase):
         autospec=True,
     )
     @patch('gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True)
-    def test_log_list(self, mock_Credentials, mock_Resource_Manager, mock_Client):
+    def test_log_list(self, MockCredentials, mock_resource_manager, MockClient):
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
-        mock_Credentials.from_service_account_info.return_value = creds
+        MockCredentials.from_service_account_info.return_value = creds
 
-        mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = iter(
+        MockClient.return_value.project = 'yoyodyne-102010'
+        MockClient.return_value.list_entries.return_value = iter(
             SAMPLE_ENTRIES
         )
 
@@ -542,7 +542,7 @@ class ReaderTests(TestCase):
             mock_project1,
             mock_project2,
         ]
-        mock_Resource_Manager.Client.return_value = resource_client
+        mock_resource_manager.Client.return_value = resource_client
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -626,9 +626,9 @@ class AggregationTests(TestCase):
 class MainCLITests(TestCase):
     def setUp(self):
         patch_path = 'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
-        with patch(patch_path, autospec=True) as mock_Client:
-            mock_Client.return_value.project = 'yoyodyne-102010'
-            mock_Client.return_value.list_entries.return_value = iter(
+        with patch(patch_path, autospec=True) as MockClient:
+            MockClient.return_value.project = 'yoyodyne-102010'
+            MockClient.return_value.list_entries.return_value = iter(
                 SAMPLE_ENTRIES
             )
             self.reader = Reader()
@@ -702,11 +702,11 @@ class MainCLITests(TestCase):
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
         autospec=True,
     )
-    def test_main(self, mock_Resource_Manager):
+    def test_main(self, mock_resource_manager):
         patch_path = 'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
-        with patch(patch_path, autospec=TestClient) as mock_Client:
-            mock_Client.return_value.project = 'yoyodyne-102010'
-            mock_Client.return_value.list_entries.return_value = iter(
+        with patch(patch_path, autospec=TestClient) as MockClient:
+            MockClient.return_value.project = 'yoyodyne-102010'
+            MockClient.return_value.list_entries.return_value = iter(
                 SAMPLE_ENTRIES
             )
 
@@ -723,7 +723,7 @@ class MainCLITests(TestCase):
                 actual_len = len(mock_stdout.getvalue().splitlines())
         expected_len = 4
         self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
-        self.assertFalse(mock_Resource_Manager.Client.called)
+        self.assertFalse(mock_resource_manager.Client.called)
 
     @patch(
         'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
@@ -733,15 +733,15 @@ class MainCLITests(TestCase):
         'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client',
         autospec=TestClient,
     )
-    def test_main_multi_project_argument(self, mock_Client, mock_Resource_Manager):
-        mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = iter(
+    def test_main_multi_project_argument(self, MockClient, mock_resource_manager):
+        MockClient.return_value.project = 'yoyodyne-102010'
+        MockClient.return_value.list_entries.return_value = iter(
             SAMPLE_ENTRIES
         )
         resource_client = MagicMock()
         mock_project1 = MagicMock(project_id='yoyodyne-102010')
         resource_client.list_projects.return_value = [mock_project1]
-        mock_Resource_Manager.Client.return_value = resource_client
+        mock_resource_manager.Client.return_value = resource_client
 
         argv = [
             '--start-time',
@@ -757,4 +757,4 @@ class MainCLITests(TestCase):
             actual_len = len(mock_stdout.getvalue().splitlines())
         expected_len = 4
         self.assertEqual(actual_len, expected_len)
-        self.assertIn(call().list_projects(), mock_Resource_Manager.Client.mock_calls)
+        self.assertIn(call().list_projects(), mock_resource_manager.Client.mock_calls)
