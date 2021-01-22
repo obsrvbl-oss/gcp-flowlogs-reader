@@ -344,7 +344,9 @@ class ReaderTests(TestCase):
 
     def test_iteration(self, MockLoggingClient):
         MockLoggingClient.return_value.project = 'yoyodyne-102010'
-        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+        MockLoggingClient.return_value.list_entries.return_value = iter(
+            SAMPLE_ENTRIES
+        )
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -379,7 +381,9 @@ class ReaderTests(TestCase):
         MockCredentials.from_service_account_info.return_value = creds
 
         MockLoggingClient.return_value.project = 'yoyodyne-102010'
-        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+        MockLoggingClient.return_value.list_entries.return_value = iter(
+            SAMPLE_ENTRIES
+        )
 
         MockResourceManagerClient.return_value.list_projects.return_value = [
             MagicMock(project_id='proj1'),
@@ -429,8 +433,8 @@ class ReaderTests(TestCase):
 
     @patch(PREFIX('ResourceManagerClient'), autospec=True)
     def test_no_resource_manager_api(
-            self, MockResourceManagerClient, MockLoggingClient,
-        ):
+        self, MockResourceManagerClient, MockLoggingClient,
+    ):
         MockResourceManagerClient.return_value.list_projects.side_effect = [
             GoogleAPIError,
         ]
@@ -582,7 +586,9 @@ class MainCLITests(TestCase):
         patch_path = PREFIX('LoggingClient')
         with patch(patch_path, autospec=True) as MockLoggingClient:
             MockLoggingClient.return_value.project = 'yoyodyne-102010'
-            MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+            MockLoggingClient.return_value.list_entries.return_value = iter(
+                SAMPLE_ENTRIES
+            )
             self.reader = Reader()
 
     def test_action_print(self):
@@ -649,7 +655,9 @@ class MainCLITests(TestCase):
     def test_main(self, MockResourceManagerClient):
         with patch(PREFIX('LoggingClient'), autospec=TestClient) as MockLoggingClient:
             MockLoggingClient.return_value.project = 'yoyodyne-102010'
-            MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+            MockLoggingClient.return_value.list_entries.return_value = iter(
+                SAMPLE_ENTRIES
+            )
             with redirect_stdout(StringIO()) as output:
                 cli_module.main(
                     [
@@ -666,9 +674,13 @@ class MainCLITests(TestCase):
 
     @patch(PREFIX('ResourceManagerClient'), autospec=True)
     @patch(PREFIX('LoggingClient'), autospec=TestClient)
-    def test_main_multi_project_argument(self, MockLoggingClient, MockResourceManagerClient):
+    def test_main_multi_project_argument(
+        self, MockLoggingClient, MockResourceManagerClient
+    ):
         MockLoggingClient.return_value.project = 'yoyodyne-102010'
-        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+        MockLoggingClient.return_value.list_entries.return_value = iter(
+            SAMPLE_ENTRIES
+        )
         MockResourceManagerClient.return_value.list_projects.return_value = [
             MagicMock(project_id='yoyodyne-102010')
         ]
