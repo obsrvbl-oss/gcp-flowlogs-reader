@@ -77,9 +77,7 @@ def action_findip(reader, *args):
     target_ips = set(args)
     print_header()
     for record in reader:
-        if (str(record.src_ip) in target_ips) or (
-            str(record.dest_ip) in target_ips
-        ):
+        if (str(record.src_ip) in target_ips) or (str(record.dest_ip) in target_ips):
             print_record(record)
 
 
@@ -121,57 +119,55 @@ def get_reader(args):
 
 def main(argv=None):
     argv = argv or sys.argv[1:]
-    parser = ArgumentParser(
-        description='Read records from Google Cloud VPC Flow Logs'
-    )
+    parser = ArgumentParser(description='Read records from Google Cloud VPC Flow Logs')
     parser.add_argument(
         'action',
-        type=str,
         nargs='*',
         default=['print'],
         help='action to take on log records',
     )
     parser.add_argument(
-        '--start-time',
         '-s',
-        type=str,
-        help=(
-            'filter for records at or after this time (default: one hour ago)'
-        ),
+        '--start-time',
+        metavar='WHEN',
+        help='filter for records at or after this time (default: one hour ago)',
     )
     parser.add_argument(
-        '--end-time',
         '-e',
-        type=str,
+        '--end-time',
+        metavar='WHEN',
         help='filter stream records before this time (default: now)',
     )
     parser.add_argument(
         '--time-format',
-        type=str,
         default='%Y-%m-%d %H:%M:%S',
-        help='how to interpret the --start-time and --end-time arguments ',
+        metavar='FORMAT',
+        help=(
+            'interpret --start-time and --end-time using this strftime(3) format '
+            '(default: "%(default)s")'
+        ),
     )
     parser.add_argument(
         '--filters',
-        type=str,
         help='additional filters to be applied server-side',
     )
     parser.add_argument(
         '--credentials-file',
-        type=str,
-        help='path to a JSON file with service account credentials '
-        '(default uses the GOOGLE_APPLICATION_CREDENTIALS variable)',
+        metavar='FILE',
+        help=(
+            'path to a JSON file with service account credentials '
+            '(default: use the GOOGLE_APPLICATION_CREDENTIALS environment variable)'
+        ),
     )
     parser.add_argument(
         '--collect-multiple-projects',
         action='store_true',
-        help='whether or not to collect flows from multiple projects',
+        help='collect flows from multiple projects',
     )
     parser.add_argument(
         '--log-name',
-        type=str,
-        help='name of the StackDriver log name to read '
-        '(default matches the project name)',
+        metavar='NAME',
+        help='name of the StackDriver log name to read (default: use the project name)',
     )
     args = parser.parse_args(argv)
 
@@ -180,7 +176,7 @@ def main(argv=None):
     try:
         action_method = actions[action]
     except KeyError:
-        print('unknown action: {}'.format(action), file=sys.stderr)
+        print(f'unknown action: {action}', file=sys.stderr)
         print('known actions: {}'.format(', '.join(actions)), file=sys.stderr)
         return
 

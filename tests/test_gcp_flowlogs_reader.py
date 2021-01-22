@@ -1,3 +1,4 @@
+from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime, timedelta
 from ipaddress import ip_address
 from io import StringIO
@@ -6,11 +7,7 @@ from unittest.mock import MagicMock, patch, call
 from tempfile import NamedTemporaryFile
 
 from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME
-from google.api_core.exceptions import (
-    GoogleAPIError,
-    PermissionDenied,
-    NotFound,
-)
+from google.api_core.exceptions import GoogleAPIError, PermissionDenied, NotFound
 from google.cloud.logging_v2 import Client
 from google.cloud.logging_v2.entries import StructEntry
 from google.oauth2.service_account import Credentials
@@ -25,6 +22,7 @@ from gcp_flowlogs_reader import (
     GeographicDetails,
 )
 
+PREFIX = 'gcp_flowlogs_reader.gcp_flowlogs_reader.{}'.format
 SAMPLE_PAYLODS = [
     {
         'bytes_sent': '491',
@@ -150,16 +148,10 @@ class FlowRecordTests(TestCase):
             ('rtt_msec', 61),
             ('reporter', 'DEST'),
             ('src_instance', None),
-            (
-                'dest_instance',
-                InstanceDetails(**SAMPLE_PAYLODS[0]['dest_instance']),
-            ),
+            ('dest_instance', InstanceDetails(**SAMPLE_PAYLODS[0]['dest_instance'])),
             ('src_vpc', None),
             ('dest_vpc', VpcDetails(**SAMPLE_PAYLODS[0]['dest_vpc'])),
-            (
-                'src_location',
-                GeographicDetails(**SAMPLE_PAYLODS[0]['src_location']),
-            ),
+            ('src_location', GeographicDetails(**SAMPLE_PAYLODS[0]['src_location'])),
             ('dest_location', None),
         ]:
             with self.subTest(attr=attr):
@@ -181,18 +173,12 @@ class FlowRecordTests(TestCase):
             ('packets_sent', 6),
             ('rtt_msec', None),
             ('reporter', 'SRC'),
-            (
-                'src_instance',
-                InstanceDetails(**SAMPLE_PAYLODS[1]['src_instance']),
-            ),
+            ('src_instance', InstanceDetails(**SAMPLE_PAYLODS[1]['src_instance'])),
             ('dest_instance', None),
             ('src_vpc', VpcDetails(**SAMPLE_PAYLODS[1]['src_vpc'])),
             ('dest_vpc', None),
             ('src_location', None),
-            (
-                'dest_location',
-                GeographicDetails(**SAMPLE_PAYLODS[1]['dest_location']),
-            ),
+            ('dest_location', GeographicDetails(**SAMPLE_PAYLODS[1]['dest_location'])),
         ]:
             with self.subTest(attr=attr):
                 actual = getattr(flow_record, attr)
@@ -200,9 +186,7 @@ class FlowRecordTests(TestCase):
                 self.assertEqual(type(actual), type(expected))
 
     def test_eq(self):
-        self.assertEqual(
-            FlowRecord(SAMPLE_ENTRIES[0]), FlowRecord(SAMPLE_ENTRIES[0])
-        )
+        self.assertEqual(FlowRecord(SAMPLE_ENTRIES[0]), FlowRecord(SAMPLE_ENTRIES[0]))
         self.assertNotEqual(
             FlowRecord(SAMPLE_ENTRIES[0]), FlowRecord(SAMPLE_ENTRIES[1])
         )
@@ -270,77 +254,66 @@ class FlowRecordTests(TestCase):
         )
 
 
-@patch(
-    'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client',
-    autospec=TestClient,
-)
+@patch(PREFIX('LoggingClient'), autospec=TestClient)
 class ReaderTests(TestCase):
-    def test_init_with_client(self, mock_Client):
+    def test_init_with_client(self, MockLoggingClient):
         logging_client = MagicMock(Client)
         logging_client.project = 'yoyodyne-102010'
         reader = Reader(logging_client=logging_client)
-        self.assertEqual(mock_Client.call_count, 0)
+        self.assertEqual(MockLoggingClient.call_count, 0)
         self.assertIs(reader.logging_client, logging_client)
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
-    )
-    def test_init_with_credentials_info(self, mock_Credentials, mock_Client):
+    @patch(PREFIX('Credentials'), autospec=True)
+    def test_init_with_credentials_info(self, MockCredentials, MockLoggingClient):
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
-        mock_Credentials.from_service_account_info.return_value = creds
+        MockCredentials.from_service_account_info.return_value = creds
 
         client = MagicMock(Client)
         client.project = 'yoyodyne-102010'
-        mock_Client.return_value = client
+        MockLoggingClient.return_value = client
 
         Reader(service_account_info={'foo': 1})
 
-        mock_Credentials.from_service_account_info.assert_called_once_with(
-            {'foo': 1}
-        )
-        mock_Client.assert_called_once_with(project='proj1', credentials=creds)
+        MockCredentials.from_service_account_info.assert_called_once_with({'foo': 1})
+        MockLoggingClient.assert_called_once_with(project='proj1', credentials=creds)
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
-    )
+    @patch(PREFIX('Credentials'), autospec=True)
     def test_init_with_credentials_info_and_project(
-        self, mock_Credentials, mock_Client
+        self, MockCredentials, MockLoggingClient
     ):
         # The credentials file specifies one project_id
         creds = MagicMock(Credentials)
         creds.project_id = 'proj1'
-        mock_Credentials.from_service_account_info.return_value = creds
+        MockCredentials.from_service_account_info.return_value = creds
 
         # The client has another one, which will be ignored
         client = MagicMock(Client)
         client.project = 'proj2'
-        mock_Client.return_value = client
+        MockLoggingClient.return_value = client
 
         # The request is for a third one, which we'll use
         Reader(service_account_info={'foo': 1}, project='proj3')
 
-        mock_Credentials.from_service_account_info.assert_called_once_with(
-            {'foo': 1}
-        )
-        mock_Client.assert_called_once_with(project='proj3', credentials=creds)
+        MockCredentials.from_service_account_info.assert_called_once_with({'foo': 1})
+        MockLoggingClient.assert_called_once_with(project='proj3', credentials=creds)
 
-    def test_init_with_credentials_json(self, mock_Client):
+    def test_init_with_credentials_json(self, MockLoggingClient):
         with NamedTemporaryFile() as temp_file:
             path = temp_file.name
             Reader(service_account_json=path, project='yoyodyne-102010')
 
-        mock_Client.from_service_account_json.assert_called_once_with(
+        MockLoggingClient.from_service_account_json.assert_called_once_with(
             path, project='yoyodyne-102010'
         )
 
-    def test_init_with_environment(self, mock_Client):
-        mock_Client.return_value.project = 'yoyodyne-102010'
+    def test_init_with_environment(self, MockLoggingClient):
+        MockLoggingClient.return_value.project = 'yoyodyne-102010'
         Reader(project='yoyodyne-102010')
-        mock_Client.assert_called_once_with(project='yoyodyne-102010')
+        MockLoggingClient.assert_called_once_with(project='yoyodyne-102010')
 
-    def test_init_log_list(self, mock_Client):
-        mock_Client.return_value.project = 'yoyodyne-1020'
+    def test_init_log_list(self, MockLoggingClient):
+        MockLoggingClient.return_value.project = 'yoyodyne-1020'
 
         # Nothing specified - log name is derived from the project name
         normal_reader = Reader()
@@ -353,8 +326,8 @@ class ReaderTests(TestCase):
         custom_reader = Reader(log_name='custom-log')
         self.assertEqual(custom_reader.log_list, ['custom-log'])
 
-    def test_init_times(self, mock_Client):
-        mock_Client.return_value.project = 'yoyodyne-102010'
+    def test_init_times(self, MockLoggingClient):
+        MockLoggingClient.return_value.project = 'yoyodyne-102010'
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 22)
 
@@ -369,11 +342,9 @@ class ReaderTests(TestCase):
         self.assertNotEqual(reader.end_time, later)
         self.assertEqual(reader.start_time, earlier)
 
-    def test_iteration(self, mock_Client):
-        mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = iter(
-            SAMPLE_ENTRIES
-        )
+    def test_iteration(self, MockLoggingClient):
+        MockLoggingClient.return_value.project = 'yoyodyne-102010'
+        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
 
         earlier = datetime(2018, 4, 3, 9, 51, 22)
         later = datetime(2018, 4, 3, 10, 51, 33)
@@ -393,57 +364,38 @@ class ReaderTests(TestCase):
             'jsonPayload.start_time >= "2018-04-03T09:51:22Z" AND '
             'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
         )
-        mock_Client.return_value.list_entries.assert_called_once_with(
+        MockLoggingClient.return_value.list_entries.assert_called_once_with(
             filter_=expression,
             page_size=1000,
             resource_names=['projects/yoyodyne-102010'],
         )
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True,
-    )
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
-    )
+    @patch(PREFIX('ResourceManagerClient'), autospec=True)
+    @patch(PREFIX('Credentials'), autospec=True)
     def test_multiple_projects(
-        self, mock_Credentials, mock_Resource_Manager, mock_Client
+        self, MockCredentials, MockResourceManagerClient, MockLoggingClient
     ):
-        creds = MagicMock(Credentials)
-        creds.project_id = 'proj1'
-        mock_Credentials.from_service_account_info.return_value = creds
+        creds = MagicMock(Credentials, project_id='proj1')
+        MockCredentials.from_service_account_info.return_value = creds
 
-        log_client = MagicMock(TestClient)
-        log_client.project = 'yoyodyne-102010'
-        log_client.list_entries.return_value = iter(SAMPLE_ENTRIES)
-        mock_Client.return_value = log_client
+        MockLoggingClient.return_value.project = 'yoyodyne-102010'
+        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
 
-        earlier = datetime(2018, 4, 3, 9, 51, 22)
-        later = datetime(2018, 4, 3, 10, 51, 33)
-
-        resource_client = MagicMock()
-        mock_project1 = MagicMock(project_id='proj1')
-        mock_project2 = MagicMock(project_id='proj2')
-        mock_project3 = MagicMock(project_id='proj3')
-        resource_client.list_projects.return_value = [
-            mock_project1,
-            mock_project2,
-            mock_project3,
+        MockResourceManagerClient.return_value.list_projects.return_value = [
+            MagicMock(project_id='proj1'),
+            MagicMock(project_id='proj2'),
+            MagicMock(project_id='proj3'),
         ]
-        project_list = ['proj1', 'proj2', 'proj3']
-        mock_Resource_Manager.Client.return_value = resource_client
 
         reader = Reader(
-            start_time=earlier,
-            end_time=later,
+            start_time=datetime(2018, 4, 3, 9, 51, 22),
+            end_time=datetime(2018, 4, 3, 10, 51, 33),
             service_account_info={'foo': 1},
             collect_multiple_projects=True,
         )
 
-        mock_Credentials.from_service_account_info.assert_called_once_with(
-            {'foo': 1}
-        )
-        mock_Client.assert_called_once_with(project='proj1', credentials=creds)
+        MockCredentials.from_service_account_info.assert_called_once_with({'foo': 1})
+        MockLoggingClient.assert_called_once_with(project='proj1', credentials=creds)
 
         # Test for flows getting created
         actual = list(reader)
@@ -464,8 +416,8 @@ class ReaderTests(TestCase):
             'jsonPayload.start_time >= "2018-04-03T09:51:22Z" AND '
             'jsonPayload.start_time < "2018-04-03T10:51:33Z"'
         )
-        mock_list_calls = mock_Client.return_value.list_entries.mock_calls
-        for proj in project_list:
+        mock_list_calls = MockLoggingClient.return_value.list_entries.mock_calls
+        for proj in ('proj1', 'proj2', 'proj3'):
             self.assertIn(
                 call(
                     filter_=expression,
@@ -475,54 +427,40 @@ class ReaderTests(TestCase):
                 mock_list_calls,
             )
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True,
-    )
-    def test_no_resource_manager_api(self, mock_Resource_Manager, mock_Client):
-        resource_client = MagicMock()
-        mock_Resource_Manager.Client.return_value = resource_client
-        resource_client.list_projects.side_effect = [GoogleAPIError]
-        log_client = MagicMock(TestClient)
-        log_client.project = 'yoyodyne-102010'
-        log_client.list_entries.return_value = iter(SAMPLE_ENTRIES)
-        mock_Client.return_value = log_client
-        earlier = datetime(2018, 4, 3, 9, 51, 22)
-        later = datetime(2018, 4, 3, 10, 51, 33)
-        reader = Reader(
-            start_time=earlier,
-            end_time=later,
-            collect_multiple_projects=True,
-        )
+    @patch(PREFIX('ResourceManagerClient'), autospec=True)
+    def test_no_resource_manager_api(
+        self, MockResourceManagerClient, MockLoggingClient
+    ):
+        MockResourceManagerClient.return_value.list_projects.side_effect = [
+            GoogleAPIError,
+        ]
+        MockLoggingClient.return_value.project = 'yoyodyne-102010'
+        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
         self.assertEqual(
-            reader.log_list, [BASE_LOG_NAME.format('yoyodyne-102010')]
+            Reader(
+                start_time=datetime(2018, 4, 3, 9, 51, 22),
+                end_time=datetime(2018, 4, 3, 10, 51, 33),
+                collect_multiple_projects=True,
+            ).log_list,
+            [BASE_LOG_NAME.format('yoyodyne-102010')],
         )
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True,
-    )
-    def test_limited_project_access(self, mock_Resource_Manager, mock_Client):
-        resource_client = MagicMock()
-        mock_Resource_Manager.Client.return_value = resource_client
-        resource_client.list_projects.return_value = [
+    @patch(PREFIX('ResourceManagerClient'), autospec=True)
+    def test_limited_project_access(self, MockResourceManagerClient, MockLoggingClient):
+        MockResourceManagerClient.return_value.list_projects.return_value = [
             MagicMock(project_id='proj1'),
             MagicMock(project_id='proj2'),
             MagicMock(project_id='proj3'),
         ]
-        log_client = MagicMock(TestClient)
-        log_client.project = 'proj1'
-        log_client.list_entries.side_effect = [
+        MockLoggingClient.return_value.project = 'proj1'
+        MockLoggingClient.return_value.list_entries.side_effect = [
             PermissionDenied(''),
             iter(SAMPLE_ENTRIES),
             NotFound(''),
         ]
-        mock_Client.return_value = log_client
-        earlier = datetime(2018, 4, 3, 9, 51, 22)
-        later = datetime(2018, 4, 3, 10, 51, 33)
         reader = Reader(
-            start_time=earlier,
-            end_time=later,
+            start_time=datetime(2018, 4, 3, 9, 51, 22),
+            end_time=datetime(2018, 4, 3, 10, 51, 33),
             collect_multiple_projects=True,
         )
         self.assertEqual(
@@ -533,70 +471,55 @@ class ReaderTests(TestCase):
                 BASE_LOG_NAME.format('proj3'),
             ],
         )
-        entry_list = list(reader)
-        self.assertEqual(entry_list, [FlowRecord(x) for x in SAMPLE_ENTRIES])
+        self.assertEqual(list(reader), [FlowRecord(x) for x in SAMPLE_ENTRIES])
 
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True,
-    )
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.Credentials', autospec=True
-    )
+    @patch(PREFIX('ResourceManagerClient'), autospec=True)
+    @patch(PREFIX('Credentials'), autospec=True)
     def test_log_list(
-        self, mock_Credentials, mock_Resource_Manager, mock_Client
+        self, MockCredentials, MockResourceManagerClient, MockLoggingClient
     ):
-        creds = MagicMock(Credentials)
-        creds.project_id = 'proj1'
-        mock_Credentials.from_service_account_info.return_value = creds
+        MockLoggingClient.return_value.project = 'yoyodyne-102010'
+        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
 
-        mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = iter(
-            SAMPLE_ENTRIES
-        )
-
-        resource_client = MagicMock()
-        mock_project1 = MagicMock(project_id='yoyodyne-102010')
-        mock_project2 = MagicMock(project_id='proj2')
-        resource_client.list_projects.return_value = [
-            mock_project1,
-            mock_project2,
+        MockResourceManagerClient.return_value.list_projects.return_value = [
+            MagicMock(project_id='yoyodyne-102010'),
+            MagicMock(project_id='proj2'),
         ]
-        mock_Resource_Manager.Client.return_value = resource_client
 
-        earlier = datetime(2018, 4, 3, 9, 51, 22)
-        later = datetime(2018, 4, 3, 10, 51, 33)
-        reader = Reader(
-            start_time=earlier,
-            end_time=later,
-            log_name='my_log',
-            collect_multiple_projects=True,
-        )
         # explicit log overwrites project_list
-        self.assertEqual(reader.log_list, ['my_log'])
-        reader = Reader(
-            start_time=earlier,
-            end_time=later,
-            service_account_info={'foo': 1},
-            collect_multiple_projects=True,
+        self.assertEqual(
+            Reader(
+                start_time=datetime(2018, 4, 3, 9, 51, 22),
+                end_time=datetime(2018, 4, 3, 10, 51, 33),
+                log_name='my_log',
+                collect_multiple_projects=True,
+            ).log_list,
+            ['my_log'],
         )
 
         # project_list includes multiple logs
-        log_string = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
         self.assertEqual(
-            reader.log_list,
-            [log_string.format('yoyodyne-102010'), log_string.format('proj2')],
+            Reader(
+                start_time=datetime(2018, 4, 3, 9, 51, 22),
+                end_time=datetime(2018, 4, 3, 10, 51, 33),
+                service_account_info={'foo': 1},
+                collect_multiple_projects=True,
+            ).log_list,
+            [
+                'projects/yoyodyne-102010/logs/compute.googleapis.com%2Fvpc_flows',
+                'projects/proj2/logs/compute.googleapis.com%2Fvpc_flows',
+            ],
         )
 
         # no project_list uses client list
-        reader = Reader(
-            start_time=earlier,
-            end_time=later,
-            service_account_info={'foo': 1},
-            collect_multiple_projects=False,
-        )
         self.assertEqual(
-            reader.log_list, [log_string.format('yoyodyne-102010')]
+            Reader(
+                start_time=datetime(2018, 4, 3, 9, 51, 22),
+                end_time=datetime(2018, 4, 3, 10, 51, 33),
+                service_account_info={'foo': 1},
+                collect_multiple_projects=False,
+            ).log_list,
+            ['projects/yoyodyne-102010/logs/compute.googleapis.com%2Fvpc_flows'],
         )
 
 
@@ -608,60 +531,67 @@ class AggregationTests(TestCase):
         flow_2 = FlowRecord(SAMPLE_ENTRIES[1])
         flow_2.end_time += timedelta(days=1)
 
-        input_records = [flow_1, flow_2]
-        output_records = list(aggregated_records(input_records))
-        self.assertEqual(len(output_records), 1)
-        actual = output_records[0]
-        expected = (
-            ip_address('192.0.2.2'),
-            ip_address('198.51.100.75'),
-            3389,
-            49444,
-            6,
-            12,  # Packets doubled
-            1512,  # Bytes doubled
-            datetime(2018, 4, 2, 13, 47, 32),  # Earliest start
-            datetime(2018, 4, 4, 13, 47, 33),  # Latest finish
+        self.assertCountEqual(
+            list(aggregated_records([flow_1, flow_2])),
+            [
+                (
+                    ip_address('192.0.2.2'),
+                    ip_address('198.51.100.75'),
+                    3389,
+                    49444,
+                    6,
+                    12,  # Packets doubled
+                    1512,  # Bytes doubled
+                    datetime(2018, 4, 2, 13, 47, 32),  # Earliest start
+                    datetime(2018, 4, 4, 13, 47, 33),  # Latest finish
+                ),
+            ],
         )
-        self.assertEqual(actual, expected)
 
     def test_custom_key(self):
-        input_records = [FlowRecord(x) for x in SAMPLE_ENTRIES]
-        key_fields = ['src_port', 'protocol']
-        output_records = sorted(
-            aggregated_records(input_records, key_fields),
-            key=lambda x: x.src_port,
+        self.assertCountEqual(
+            list(
+                aggregated_records(
+                    [FlowRecord(x) for x in SAMPLE_ENTRIES],
+                    ['src_port', 'protocol'],
+                )
+            ),
+            [
+                (
+                    3389,
+                    6,
+                    26,
+                    1776,
+                    datetime(2018, 4, 3, 13, 47, 31),
+                    datetime(2018, 4, 3, 13, 48, 33),
+                ),
+                (
+                    49444,
+                    6,
+                    4,
+                    491,
+                    datetime(2018, 4, 3, 13, 47, 37),
+                    datetime(2018, 4, 3, 13, 47, 38),
+                ),
+            ],
         )
-        self.assertEqual(len(output_records), 2)
-        actual = output_records[0]
-        expected = (
-            3389,
-            6,
-            26,
-            1776,
-            datetime(2018, 4, 3, 13, 47, 31),
-            datetime(2018, 4, 3, 13, 48, 33),
-        )
-        self.assertEqual(tuple(actual), expected)
 
 
 class MainCLITests(TestCase):
     def setUp(self):
-        patch_path = (
-            'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
-        )
-        with patch(patch_path, autospec=True) as mock_Client:
-            mock_Client.return_value.project = 'yoyodyne-102010'
-            mock_Client.return_value.list_entries.return_value = iter(
+        patch_path = PREFIX('LoggingClient')
+        with patch(patch_path, autospec=True) as MockLoggingClient:
+            MockLoggingClient.return_value.project = 'yoyodyne-102010'
+            MockLoggingClient.return_value.list_entries.return_value = iter(
                 SAMPLE_ENTRIES
             )
             self.reader = Reader()
 
     def test_action_print(self):
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with redirect_stdout(StringIO()) as output:
             cli_module.action_print(self.reader)
-            actual = mock_stdout.getvalue()
-        expected = (
+        self.assertEqual(
+            output.getvalue(),
             'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
             'start_time\tend_time\tbytes_sent\tpackets_sent\n'
             '198.51.100.75\t192.0.2.2\t49444\t3389\t6\t2018-04-03T13:47:37\t'
@@ -669,122 +599,96 @@ class MainCLITests(TestCase):
             '192.0.2.2\t198.51.100.75\t3389\t49444\t6\t2018-04-03T13:47:32\t'
             '2018-04-03T13:47:33\t756\t6\n'
             '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
-            '2018-04-03T13:48:33\t1020\t20\n'
+            '2018-04-03T13:48:33\t1020\t20\n',
         )
-        self.assertEqual(actual, expected)
 
     def test_action_print_limit(self):
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with redirect_stdout(StringIO()) as output:
             cli_module.action_print(self.reader, 1)
-            actual = mock_stdout.getvalue()
-        expected = (
+        self.assertEqual(
+            output.getvalue(),
             'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
             'start_time\tend_time\tbytes_sent\tpackets_sent\n'
             '198.51.100.75\t192.0.2.2\t49444\t3389\t6\t2018-04-03T13:47:37\t'
-            '2018-04-03T13:47:38\t491\t4\n'
+            '2018-04-03T13:47:38\t491\t4\n',
         )
-        self.assertEqual(actual, expected)
 
     def test_action_print_error(self):
         with self.assertRaises(RuntimeError):
             cli_module.action_print(self.reader, 1, 2)
 
     def test_action_ipset(self):
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with redirect_stdout(StringIO()) as output:
             cli_module.action_ipset(self.reader)
-            actual = mock_stdout.getvalue()
-        expected = '192.0.2.2\n' '192.0.2.3\n' '198.51.100.75\n'
-        self.assertEqual(actual, expected)
+        self.assertEqual(output.getvalue(), '192.0.2.2\n192.0.2.3\n198.51.100.75\n')
 
     def test_action_findip(self):
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with redirect_stdout(StringIO()) as output:
             cli_module.action_findip(self.reader, '192.0.2.3')
-            actual = mock_stdout.getvalue()
-        expected = (
+        self.assertEqual(
+            output.getvalue(),
             'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
             'start_time\tend_time\tbytes_sent\tpackets_sent\n'
             '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
-            '2018-04-03T13:48:33\t1020\t20\n'
+            '2018-04-03T13:48:33\t1020\t20\n',
         )
-        self.assertEqual(actual, expected)
 
     def test_action_aggregate(self):
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with redirect_stdout(StringIO()) as output:
             cli_module.action_aggregate(self.reader)
-            actual_len = len(mock_stdout.getvalue().splitlines())
-        expected_len = 4
-        self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
+        self.assertEqual(len(output.getvalue().splitlines()), 4)
 
     def test_main_error(self):
-        with patch('sys.stderr', new_callable=StringIO) as mock_stderr:
+        with redirect_stderr(StringIO()) as output:
             cli_module.main(['frobulate'])
-            actual_len = len(mock_stderr.getvalue().splitlines())
-        expected_len = 2
-        self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
-
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True,
-    )
-    def test_main(self, mock_Resource_Manager):
-        patch_path = (
-            'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client'
+        self.assertEqual(
+            output.getvalue(),
+            'unknown action: frobulate\n'
+            'known actions: print, ipset, findip, aggregate\n',
         )
-        with patch(patch_path, autospec=TestClient) as mock_Client:
-            mock_Client.return_value.project = 'yoyodyne-102010'
-            mock_Client.return_value.list_entries.return_value = iter(
+
+    @patch(PREFIX('ResourceManagerClient'), autospec=True)
+    def test_main(self, MockResourceManagerClient):
+        with patch(PREFIX('LoggingClient'), autospec=TestClient) as MockLoggingClient:
+            MockLoggingClient.return_value.project = 'yoyodyne-102010'
+            MockLoggingClient.return_value.list_entries.return_value = iter(
                 SAMPLE_ENTRIES
             )
+            with redirect_stdout(StringIO()) as output:
+                cli_module.main(
+                    [
+                        '--start-time',
+                        '2018-04-03 12:00:00',
+                        '--end-time',
+                        '2018-04-03 13:00:00',
+                        '--filters',
+                        'jsonPayload.src_ip="198.51.100.1"',
+                    ],
+                )
+        self.assertEqual(len(output.getvalue().splitlines()), 4)
+        self.assertFalse(MockResourceManagerClient.called)
 
-            argv = [
-                '--start-time',
-                '2018-04-03 12:00:00',
-                '--end-time',
-                '2018-04-03 13:00:00',
-                '--filters',
-                'jsonPayload.src_ip="198.51.100.1"',
-            ]
-            with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
-                cli_module.main(argv)
-                actual_len = len(mock_stdout.getvalue().splitlines())
-        expected_len = 4
-        self.assertEqual(actual_len, expected_len)  # TODO: more thorough test
-        self.assertFalse(mock_Resource_Manager.Client.called)
-
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.resource_manager',
-        autospec=True,
-    )
-    @patch(
-        'gcp_flowlogs_reader.gcp_flowlogs_reader.gcp_logging.Client',
-        autospec=TestClient,
-    )
+    @patch(PREFIX('ResourceManagerClient'), autospec=True)
+    @patch(PREFIX('LoggingClient'), autospec=TestClient)
     def test_main_multi_project_argument(
-        self, mock_Client, mock_Resource_Manager
+        self, MockLoggingClient, MockResourceManagerClient
     ):
-        mock_Client.return_value.project = 'yoyodyne-102010'
-        mock_Client.return_value.list_entries.return_value = iter(
-            SAMPLE_ENTRIES
-        )
-        resource_client = MagicMock()
-        mock_project1 = MagicMock(project_id='yoyodyne-102010')
-        resource_client.list_projects.return_value = [mock_project1]
-        mock_Resource_Manager.Client.return_value = resource_client
-
-        argv = [
-            '--start-time',
-            '2018-04-03 12:00:00',
-            '--end-time',
-            '2018-04-03 13:00:00',
-            '--filters',
-            'jsonPayload.src_ip="198.51.100.1"',
-            '--collect-multiple-projects',
+        MockLoggingClient.return_value.project = 'yoyodyne-102010'
+        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+        MockResourceManagerClient.return_value.list_projects.return_value = [
+            MagicMock(project_id='yoyodyne-102010')
         ]
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
-            cli_module.main(argv)
-            actual_len = len(mock_stdout.getvalue().splitlines())
-        expected_len = 4
-        self.assertEqual(actual_len, expected_len)
-        self.assertIn(
-            call().list_projects(), mock_Resource_Manager.Client.mock_calls
-        )
+        with redirect_stdout(StringIO()) as output:
+            cli_module.main(
+                [
+                    '--start-time',
+                    '2018-04-03 12:00:00',
+                    '--end-time',
+                    '2018-04-03 13:00:00',
+                    '--filters',
+                    'jsonPayload.src_ip="198.51.100.1"',
+                    '--collect-multiple-projects',
+                ],
+            )
+        self.assertEqual(len(output.getvalue().splitlines()), 4)
+        self.assertIn(call().list_projects(), MockResourceManagerClient.mock_calls)
