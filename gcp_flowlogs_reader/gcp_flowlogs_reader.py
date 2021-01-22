@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from ipaddress import ip_address
 
 from google.api_core.exceptions import GoogleAPIError
-from google.cloud import logging as gcp_logging, resource_manager
+from google.cloud import logging_v2 as gcp_logging, resource_manager
 from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
@@ -226,13 +226,12 @@ class Reader:
 
         for project in self.project_list:
             try:
-                iterator = self.logging_client.list_entries(
+                for flow_entry in self.logging_client.list_entries(
                     filter_=expression,
                     page_size=self.page_size,
-                    projects=[project],  # only collects current project flows
-                )
-                for page in iterator.pages:
-                    for flow_entry in page:
-                        yield FlowRecord(flow_entry)
+                    # only collect current project flows:
+                    resource_names=[f'projects/{project}'],
+                ):
+                    yield FlowRecord(flow_entry)
             except GoogleAPIError:  # Expected for removed/restricted projects
                 pass
