@@ -3,7 +3,8 @@ from ipaddress import ip_address, IPv4Address, IPv6Address
 from typing import NamedTuple, Optional, Union, Any
 
 from google.api_core.exceptions import GoogleAPIError
-from google.cloud import logging_v2 as gcp_logging, resource_manager
+from google.cloud.logging_v2 import Client as LoggingClient, StructEntry
+from google.cloud.resource_manager import Client as ResourceManagerClient
 from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
@@ -127,7 +128,7 @@ class FlowRecord:
 
     @classmethod
     def from_payload(cls, payload):
-        return cls(gcp_logging.entries.StructEntry(payload, None))
+        return cls(StructEntry(payload, None))
 
 
 class Reader:
@@ -149,7 +150,7 @@ class Reader:
             self.logging_client = logging_client
         # If a service account JSON file was provided, try it.
         elif service_account_json:
-            self.logging_client = gcp_logging.Client.from_service_account_json(
+            self.logging_client = LoggingClient.from_service_account_json(
                 service_account_json, **kwargs
             )
         elif service_account_info:
@@ -160,12 +161,12 @@ class Reader:
             client_args = {'project': gcp_credentials.project_id}
             client_args.update(kwargs)
 
-            self.logging_client = gcp_logging.Client(
+            self.logging_client = LoggingClient(
                 credentials=gcp_credentials, **client_args
             )
         # Failing that, use the GOOGLE_APPLICATION_CREDENTIALS environment variable.
         else:
-            self.logging_client = gcp_logging.Client(**kwargs)
+            self.logging_client = LoggingClient(**kwargs)
 
         # capture project list, each project requires log view permissions
         if collect_multiple_projects:
@@ -203,7 +204,7 @@ class Reader:
     @staticmethod
     def _get_project_list(log_client):
         try:
-            client = resource_manager.Client(credentials=log_client._credentials)
+            client = ResourceManagerClient(credentials=log_client._credentials)
             project_list = [x.project_id for x in client.list_projects()]
         except GoogleAPIError:  # no permission to collect other projects
             return [log_client.project]
