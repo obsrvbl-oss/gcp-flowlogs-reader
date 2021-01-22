@@ -1,6 +1,5 @@
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from datetime import datetime
-from typing import Any, NamedTuple
 
 KEY_FIELDS = ['src_ip', 'dest_ip', 'src_port', 'dest_port', 'protocol']
 VALUE_FIELDS = ['packets_sent', 'bytes_sent', 'start_time', 'end_time']
@@ -28,7 +27,7 @@ class _FlowStats:
 
 
 def aggregated_records(all_records, key_fields=KEY_FIELDS):
-    StatRecord = NamedTuple('StatRecord', [(fieldname, Any) for fieldname in key_fields + VALUE_FIELDS])
+    StatRecord = namedtuple('StatRecord', key_fields + VALUE_FIELDS)
 
     flow_table = defaultdict(_FlowStats)
     for flow_record in all_records:
