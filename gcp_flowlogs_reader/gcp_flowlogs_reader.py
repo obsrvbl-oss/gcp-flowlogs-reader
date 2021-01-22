@@ -51,7 +51,7 @@ class FlowRecord:
 
     __slots__ = list(__annotations__)
 
-    def __init__(self, entry):
+    def __init__(self, entry: StructEntry):
         flow_payload = entry.payload or entry.log_name
         connection = flow_payload['connection']
         self.src_ip = ip_address(connection['src_ip'])
@@ -67,7 +67,7 @@ class FlowRecord:
         self.packets_sent = int(flow_payload['packets_sent'])
 
         rtt_msec = flow_payload.get('rtt_msec')
-        self.rtt_msec = int(rtt_msec) if (rtt_msec is not None) else None
+        self.rtt_msec = None if rtt_msec is None else int(rtt_msec)
 
         self.reporter = flow_payload['reporter']
 
@@ -219,9 +219,7 @@ class Reader:
         payload_start = self._format_dt(self.start_time)
         payload_end = self._format_dt(self.end_time)
 
-        log_filters = [
-            f'logName="{log_elm}"' for log_elm in self.log_list
-        ]
+        log_filters = [f'logName="{log_elm}"' for log_elm in self.log_list]
         full_log_filter = ' OR '.join(log_filters)
 
         filters = self.filters[:] + [

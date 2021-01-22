@@ -7,11 +7,7 @@ from unittest.mock import MagicMock, patch, call
 from tempfile import NamedTemporaryFile
 
 from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME
-from google.api_core.exceptions import (
-    GoogleAPIError,
-    PermissionDenied,
-    NotFound,
-)
+from google.api_core.exceptions import GoogleAPIError, PermissionDenied, NotFound
 from google.cloud.logging_v2 import Client
 from google.cloud.logging_v2.entries import StructEntry
 from google.oauth2.service_account import Credentials
