@@ -7,7 +7,7 @@ from google.api_core.exceptions import (
     Forbidden,
     GoogleAPIError,
     NotFound,
-    ResourceExhausted,
+    TooManyRequests,
 )
 from google.cloud.logging import Client as LoggingClient
 from google.cloud.logging.entries import StructEntry
@@ -26,7 +26,7 @@ def page_helper(logging_client, wait_time=1.0, **kwargs):
                 kwargs['page_token'] = iterator.next_page_token
                 yield from page
             break
-        except ResourceExhausted:
+        except TooManyRequests:
             sleep(wait_time)
             pass
 
