@@ -134,6 +134,7 @@ class MockIterator:
             [SAMPLE_ENTRIES[0], SAMPLE_ENTRIES[1]],
             [SAMPLE_ENTRIES[2]],
         )
+        self.next_page_token = None
 
     def __iter__(self):
         return self
@@ -404,6 +405,7 @@ class ReaderTests(TestCase):
             filter_=expression,
             page_size=1000,
             projects=['yoyodyne-102010'],
+            page_token=None,
         )
 
     @patch(PREFIX('ResourceManagerClient'), autospec=True)
@@ -465,7 +467,12 @@ class ReaderTests(TestCase):
         mock_list_calls = MockLoggingClient.return_value.list_entries.mock_calls
         for proj in ('proj1', 'proj2', 'proj3'):
             self.assertIn(
-                call(filter_=expression, page_size=1000, projects=[proj]),
+                call(
+                    filter_=expression,
+                    page_size=1000,
+                    projects=[proj],
+                    page_token=None
+                ),
                 mock_list_calls,
             )
 

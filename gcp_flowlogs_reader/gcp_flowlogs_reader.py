@@ -1,14 +1,34 @@
 from datetime import datetime, timedelta
 from ipaddress import ip_address, IPv4Address, IPv6Address
+from time import sleep
 from typing import NamedTuple, Optional, Union
 
-from google.api_core.exceptions import GoogleAPIError
+from google.api_core.exceptions import (
+    Forbidden,
+    GoogleAPIError,
+    NotFound,
+    ResourceExhausted,
+)
 from google.cloud.logging import Client as LoggingClient
 from google.cloud.logging.entries import StructEntry
 from google.cloud.resource_manager import Client as ResourceManagerClient
 from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
+
+
+def page_helper(logging_client, wait_time=1.0, **kwargs):
+    kwargs['page_token'] = None
+    while True:
+        try:
+            iterator = logging_client.list_entries(**kwargs)
+            for page in iterator.pages:
+                kwargs['page_token'] = iterator.next_page_token
+                yield from page
+            break
+        except ResourceExhausted:
+            sleep(wait_time)
+            pass
 
 
 class InstanceDetails(NamedTuple):
@@ -141,6 +161,7 @@ class Reader:
         service_account_json=None,
         service_account_info=None,
         page_size=1000,
+        wait_time=1.0,
         **kwargs,
     ):
         # If a Client instance is provided, use it.
@@ -186,6 +207,7 @@ class Reader:
         self.start_time = start_time or (self.end_time - timedelta(hours=1))
 
         self.page_size = page_size
+        self.wait_time = wait_time
         self.filters = filters or []
         self.iterator = self._reader()
 
@@ -231,13 +253,13 @@ class Reader:
 
         for project in self.project_list:
             try:
-                iterator = self.logging_client.list_entries(
+                for flow_entry in page_helper(
+                    self.logging_client,
+                    wait_time=self.wait_time,
                     filter_=' AND '.join(filters),
                     page_size=self.page_size,
                     projects=[project],
-                )
-                for page in iterator.pages:
-                    for flow_entry in page:
-                        yield FlowRecord(flow_entry)
-            except GoogleAPIError:  # Expected for removed/restricted projects
+                ):
+                    yield FlowRecord(flow_entry)
+            except (Forbidden, NotFound):  # Expected for removed/restricted projects
                 pass
