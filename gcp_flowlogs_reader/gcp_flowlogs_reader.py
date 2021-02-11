@@ -3,7 +3,8 @@ from ipaddress import ip_address, IPv4Address, IPv6Address
 from typing import NamedTuple, Optional, Union
 
 from google.api_core.exceptions import GoogleAPIError
-from google.cloud.logging_v2 import Client as LoggingClient, StructEntry
+from google.cloud.logging import Client as LoggingClient
+from google.cloud.logging.entries import StructEntry
 from google.cloud.resource_manager import Client as ResourceManagerClient
 from google.oauth2.service_account import Credentials
 
@@ -230,12 +231,13 @@ class Reader:
 
         for project in self.project_list:
             try:
-                for flow_entry in self.logging_client.list_entries(
+                iterator = self.logging_client.list_entries(
                     filter_=' AND '.join(filters),
                     page_size=self.page_size,
-                    # only collect current project flows:
-                    resource_names=[f'projects/{project}'],
-                ):
-                    yield FlowRecord(flow_entry)
+                    projects=[project],
+                )
+                for page in iterator.pages:
+                    for flow_entry in page:
+                        yield FlowRecord(flow_entry)
             except GoogleAPIError:  # Expected for removed/restricted projects
                 pass
