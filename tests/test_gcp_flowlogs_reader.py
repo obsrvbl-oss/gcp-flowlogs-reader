@@ -468,10 +468,7 @@ class ReaderTests(TestCase):
         for proj in ('proj1', 'proj2', 'proj3'):
             self.assertIn(
                 call(
-                    filter_=expression,
-                    page_size=1000,
-                    projects=[proj],
-                    page_token=None
+                    filter_=expression, page_size=1000, projects=[proj], page_token=None
                 ),
                 mock_list_calls,
             )
