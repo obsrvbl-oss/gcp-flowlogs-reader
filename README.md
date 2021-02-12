@@ -10,6 +10,7 @@ analysis, and analogous to NetFlow and IPFIX records for on-premises networks.
 For more information about VPC Flow Logs in Google Cloud, see
 [these docs](https://cloud.google.com/vpc/docs/using-flow-logs).
 
+Note that this branch wraps version 1 of the [Python Client for Cloud Logging](https://github.com/googleapis/python-logging).
 
 ## Installation and authentication
 
