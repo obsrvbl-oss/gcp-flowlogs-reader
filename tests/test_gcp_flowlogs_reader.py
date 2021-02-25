@@ -123,6 +123,41 @@ SAMPLE_PAYLODS = [
         },
         'start_time': '2018-04-03T13:47:31.805417512Z',
     },
+    {
+        'bytes_sent': '1020',
+        'connection': {
+            'dest_ip': '192.0.2.3',
+            'protocol': 1.0,
+            'src_ip': '192.0.2.2',
+        },
+        'end_time': '2018-04-03T13:48:33.937764566Z',
+        'packets_sent': '20',
+        'reporter': 'SRC',
+        'src_instance': {
+            'project_id': 'yoyodyne-102010',
+            'region': 'us-west1',
+            'vm_name': 'vm-instance-01',
+            'zone': 'us-west1-a',
+        },
+        'src_vpc': {
+            'project_id': 'yoyodyne-102010',
+            'subnetwork_name': 'yoyo-vpc-1',
+            'vpc_name': 'yoyo-vpc-1',
+        },
+        'dest_instance': {
+            'project_id': 'yoyodyne-102010',
+            'region': 'us-west1',
+            'vm_name': 'vm-instance-02',
+            'zone': 'us-west1-a',
+        },
+        'dest_vpc': {
+            'project_id': 'yoyodyne-102010',
+            'subnetwork_name': 'yoyo-vpc-1',
+            'vpc_name': 'yoyo-vpc-1',
+        },
+        'start_time': '2018-04-03T13:47:31.805417512Z',
+    },
+
 ]
 
 SAMPLE_ENTRIES = [StructEntry(x, None) for x in SAMPLE_PAYLODS]
@@ -573,6 +608,14 @@ class AggregationTests(TestCase):
                     datetime(2018, 4, 3, 13, 47, 37),
                     datetime(2018, 4, 3, 13, 47, 38),
                 ),
+                (
+                    0,
+                    1,
+                    20,
+                    1020,
+                    datetime(2018, 4, 3, 13, 47, 31),
+                    datetime(2018, 4, 3, 13, 48, 33),
+                ),
             ],
         )
 
@@ -599,6 +642,8 @@ class MainCLITests(TestCase):
             '192.0.2.2\t198.51.100.75\t3389\t49444\t6\t2018-04-03T13:47:32\t'
             '2018-04-03T13:47:33\t756\t6\n'
             '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
+            '2018-04-03T13:48:33\t1020\t20\n'
+            '192.0.2.2\t192.0.2.3\t0\t0\t1\t2018-04-03T13:47:31\t'
             '2018-04-03T13:48:33\t1020\t20\n',
         )
 
@@ -630,13 +675,16 @@ class MainCLITests(TestCase):
             'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
             'start_time\tend_time\tbytes_sent\tpackets_sent\n'
             '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
-            '2018-04-03T13:48:33\t1020\t20\n',
+            '2018-04-03T13:48:33\t1020\t20\n'
+            '192.0.2.2\t192.0.2.3\t0\t0\t1\t2018-04-03T13:47:31\t'
+            '2018-04-03T13:48:33\t1020\t20\n'
+
         )
 
     def test_action_aggregate(self):
         with redirect_stdout(StringIO()) as output:
             cli_module.action_aggregate(self.reader)
-        self.assertEqual(len(output.getvalue().splitlines()), 4)
+        self.assertEqual(len(output.getvalue().splitlines()), 5)
 
     def test_main_error(self):
         with redirect_stderr(StringIO()) as output:
@@ -665,7 +713,7 @@ class MainCLITests(TestCase):
                         'jsonPayload.src_ip="198.51.100.1"',
                     ],
                 )
-        self.assertEqual(len(output.getvalue().splitlines()), 4)
+        self.assertEqual(len(output.getvalue().splitlines()), 5)
         self.assertFalse(MockResourceManagerClient.called)
 
     @patch(PREFIX('ResourceManagerClient'), autospec=True)
@@ -690,5 +738,5 @@ class MainCLITests(TestCase):
                     '--collect-multiple-projects',
                 ],
             )
-        self.assertEqual(len(output.getvalue().splitlines()), 4)
+        self.assertEqual(len(output.getvalue().splitlines()), 5)
         self.assertIn(call().list_projects(), MockResourceManagerClient.mock_calls)
