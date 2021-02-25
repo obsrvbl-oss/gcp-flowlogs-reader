@@ -76,13 +76,15 @@ class FlowRecord:
         flow_payload = entry.payload or entry.log_name
         connection = flow_payload['connection']
         self.src_ip = ip_address(connection['src_ip'])
-        self.src_port = int(connection['src_port'])
+        self.src_port = int(connection.get('src_port', 0))
         self.dest_ip = ip_address(connection['dest_ip'])
-        self.dest_port = int(connection['dest_port'])
+        self.dest_port = int(connection.get('dest_port', 0))
         self.protocol = int(connection['protocol'])
 
-        self.start_time = self._get_dt(flow_payload['start_time'])
         self.end_time = self._get_dt(flow_payload['end_time'])
+        self.start_time = self._get_dt(
+            flow_payload.get('start_time', flow_payload['end_time'])
+        )
 
         self.bytes_sent = int(flow_payload['bytes_sent'])
         self.packets_sent = int(flow_payload['packets_sent'])

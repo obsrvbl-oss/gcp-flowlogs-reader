@@ -23,7 +23,7 @@ from gcp_flowlogs_reader import (
 )
 
 PREFIX = 'gcp_flowlogs_reader.gcp_flowlogs_reader.{}'.format
-SAMPLE_PAYLODS = [
+SAMPLE_PAYLOADS = [
     {
         'bytes_sent': '491',
         'connection': {
@@ -123,16 +123,49 @@ SAMPLE_PAYLODS = [
         },
         'start_time': '2018-04-03T13:47:31.805417512Z',
     },
+    {
+        'bytes_sent': '1020',
+        'connection': {
+            'dest_ip': '192.0.2.3',
+            'protocol': 1.0,
+            'src_ip': '192.0.2.2',
+        },
+        'end_time': '2018-04-03T13:48:33.937764566Z',
+        'packets_sent': '20',
+        'reporter': 'SRC',
+        'src_instance': {
+            'project_id': 'yoyodyne-102010',
+            'region': 'us-west1',
+            'vm_name': 'vm-instance-01',
+            'zone': 'us-west1-a',
+        },
+        'src_vpc': {
+            'project_id': 'yoyodyne-102010',
+            'subnetwork_name': 'yoyo-vpc-1',
+            'vpc_name': 'yoyo-vpc-1',
+        },
+        'dest_instance': {
+            'project_id': 'yoyodyne-102010',
+            'region': 'us-west1',
+            'vm_name': 'vm-instance-02',
+            'zone': 'us-west1-a',
+        },
+        'dest_vpc': {
+            'project_id': 'yoyodyne-102010',
+            'subnetwork_name': 'yoyo-vpc-1',
+            'vpc_name': 'yoyo-vpc-1',
+        },
+    },
 ]
 
-SAMPLE_ENTRIES = [StructEntry(x, None) for x in SAMPLE_PAYLODS]
+SAMPLE_ENTRIES = [StructEntry(x, None) for x in SAMPLE_PAYLOADS]
 
 
 class MockIterator:
     def __init__(self):
         self.pages = (
             [SAMPLE_ENTRIES[0], SAMPLE_ENTRIES[1]],
-            [SAMPLE_ENTRIES[2]],
+            [SAMPLE_ENTRIES[2], SAMPLE_ENTRIES[3]],
         )
         self.next_page_token = None
 
@@ -185,10 +218,10 @@ class FlowRecordTests(TestCase):
             ('rtt_msec', 61),
             ('reporter', 'DEST'),
             ('src_instance', None),
-            ('dest_instance', InstanceDetails(**SAMPLE_PAYLODS[0]['dest_instance'])),
+            ('dest_instance', InstanceDetails(**SAMPLE_PAYLOADS[0]['dest_instance'])),
             ('src_vpc', None),
-            ('dest_vpc', VpcDetails(**SAMPLE_PAYLODS[0]['dest_vpc'])),
-            ('src_location', GeographicDetails(**SAMPLE_PAYLODS[0]['src_location'])),
+            ('dest_vpc', VpcDetails(**SAMPLE_PAYLOADS[0]['dest_vpc'])),
+            ('src_location', GeographicDetails(**SAMPLE_PAYLOADS[0]['src_location'])),
             ('dest_location', None),
         ]:
             with self.subTest(attr=attr):
@@ -210,12 +243,12 @@ class FlowRecordTests(TestCase):
             ('packets_sent', 6),
             ('rtt_msec', None),
             ('reporter', 'SRC'),
-            ('src_instance', InstanceDetails(**SAMPLE_PAYLODS[1]['src_instance'])),
+            ('src_instance', InstanceDetails(**SAMPLE_PAYLOADS[1]['src_instance'])),
             ('dest_instance', None),
-            ('src_vpc', VpcDetails(**SAMPLE_PAYLODS[1]['src_vpc'])),
+            ('src_vpc', VpcDetails(**SAMPLE_PAYLOADS[1]['src_vpc'])),
             ('dest_vpc', None),
             ('src_location', None),
-            ('dest_location', GeographicDetails(**SAMPLE_PAYLODS[1]['dest_location'])),
+            ('dest_location', GeographicDetails(**SAMPLE_PAYLOADS[1]['dest_location'])),
         ]:
             with self.subTest(attr=attr):
                 actual = getattr(flow_record, attr)
@@ -274,10 +307,10 @@ class FlowRecordTests(TestCase):
             ('rtt_msec', 61),
             ('reporter', 'DEST'),
             ('src_instance', None),
-            ('dest_instance', SAMPLE_PAYLODS[0]['dest_instance']),
+            ('dest_instance', SAMPLE_PAYLOADS[0]['dest_instance']),
             ('src_vpc', None),
-            ('dest_vpc', SAMPLE_PAYLODS[0]['dest_vpc']),
-            ('src_location', SAMPLE_PAYLODS[0]['src_location']),
+            ('dest_vpc', SAMPLE_PAYLOADS[0]['dest_vpc']),
+            ('src_location', SAMPLE_PAYLOADS[0]['src_location']),
             ('dest_location', None),
         ]:
             with self.subTest(attr=attr):
@@ -286,7 +319,7 @@ class FlowRecordTests(TestCase):
 
     def test_from_payload(self):
         self.assertEqual(
-            FlowRecord.from_payload(SAMPLE_PAYLODS[0]),
+            FlowRecord.from_payload(SAMPLE_PAYLOADS[0]),
             FlowRecord(SAMPLE_ENTRIES[0]),
         )
 
@@ -422,7 +455,7 @@ class ReaderTests(TestCase):
         proj2_iterator = MockIterator()
         proj2_iterator.pages = [[SAMPLE_ENTRIES[1]]]
         proj3_iterator = MockIterator()
-        proj3_iterator.pages = [[SAMPLE_ENTRIES[2]]]
+        proj3_iterator.pages = [[SAMPLE_ENTRIES[2], SAMPLE_ENTRIES[3]]]
         MockLoggingClient.return_value.list_entries.side_effect = [
             proj1_iterator,
             proj2_iterator,
@@ -619,6 +652,14 @@ class AggregationTests(TestCase):
                     datetime(2018, 4, 3, 13, 47, 37),
                     datetime(2018, 4, 3, 13, 47, 38),
                 ),
+                (
+                    0,
+                    1,
+                    20,
+                    1020,
+                    datetime(2018, 4, 3, 13, 48, 33),
+                    datetime(2018, 4, 3, 13, 48, 33),
+                ),
             ],
         )
 
@@ -643,6 +684,8 @@ class MainCLITests(TestCase):
             '192.0.2.2\t198.51.100.75\t3389\t49444\t6\t2018-04-03T13:47:32\t'
             '2018-04-03T13:47:33\t756\t6\n'
             '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
+            '2018-04-03T13:48:33\t1020\t20\n'
+            '192.0.2.2\t192.0.2.3\t0\t0\t1\t2018-04-03T13:48:33\t'
             '2018-04-03T13:48:33\t1020\t20\n',
         )
 
@@ -674,13 +717,15 @@ class MainCLITests(TestCase):
             'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
             'start_time\tend_time\tbytes_sent\tpackets_sent\n'
             '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
+            '2018-04-03T13:48:33\t1020\t20\n'
+            '192.0.2.2\t192.0.2.3\t0\t0\t1\t2018-04-03T13:48:33\t'
             '2018-04-03T13:48:33\t1020\t20\n',
         )
 
     def test_action_aggregate(self):
         with redirect_stdout(StringIO()) as output:
             cli_module.action_aggregate(self.reader)
-        self.assertEqual(len(output.getvalue().splitlines()), 4)
+        self.assertEqual(len(output.getvalue().splitlines()), 5)
 
     def test_main_error(self):
         with redirect_stderr(StringIO()) as output:
@@ -707,7 +752,7 @@ class MainCLITests(TestCase):
                         'jsonPayload.src_ip="198.51.100.1"',
                     ],
                 )
-        self.assertEqual(len(output.getvalue().splitlines()), 4)
+        self.assertEqual(len(output.getvalue().splitlines()), 5)
         self.assertFalse(MockResourceManagerClient.called)
 
     @patch(PREFIX('ResourceManagerClient'), autospec=True)
@@ -732,5 +777,5 @@ class MainCLITests(TestCase):
                     '--collect-multiple-projects',
                 ],
             )
-        self.assertEqual(len(output.getvalue().splitlines()), 4)
+        self.assertEqual(len(output.getvalue().splitlines()), 5)
         self.assertIn(call().list_projects(), MockResourceManagerClient.mock_calls)
