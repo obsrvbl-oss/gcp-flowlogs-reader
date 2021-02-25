@@ -10,6 +10,7 @@ analysis, and analogous to NetFlow and IPFIX records for on-premises networks.
 For more information about VPC Flow Logs in Google Cloud, see
 [these docs](https://cloud.google.com/vpc/docs/using-flow-logs).
 
+Note that this branch wraps version 1 of the [Python Client for Cloud Logging](https://github.com/googleapis/python-logging).
 
 ## Installation and authentication
 
@@ -140,6 +141,6 @@ You may pass in these keywords as arguments to affect what flows are returned:
 * `end_time` - defaults to now
 * `filters` - defaults the the standard log name
 * `collect_multiple_projects` - defaults to False
-* `logging_client` - a custom `google.cloud.logging_v2.Client` instance
+* `logging_client` - a custom `google.cloud.logging.Client` instance
 * `service_account_json` - the path to a service account JSON credential file
 * `service_account_info` - the service account information parsed from a credential file. See [`from_service_account`](https://google-auth.readthedocs.io/en/latest/reference/google.oauth2.service_account.html#google.oauth2.service_account.Credentials.from_service_account_info) for more information.
