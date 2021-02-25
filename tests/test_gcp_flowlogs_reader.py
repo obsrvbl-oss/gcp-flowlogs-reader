@@ -166,7 +166,7 @@ class MockIterator:
     def __init__(self):
         self.pages = (
             [SAMPLE_ENTRIES[0], SAMPLE_ENTRIES[1]],
-            [SAMPLE_ENTRIES[2]],
+            [SAMPLE_ENTRIES[2], SAMPLE_ENTRIES[3]],
         )
         self.next_page_token = None
 
@@ -456,7 +456,7 @@ class ReaderTests(TestCase):
         proj2_iterator = MockIterator()
         proj2_iterator.pages = [[SAMPLE_ENTRIES[1]]]
         proj3_iterator = MockIterator()
-        proj3_iterator.pages = [[SAMPLE_ENTRIES[2]]]
+        proj3_iterator.pages = [[SAMPLE_ENTRIES[2], SAMPLE_ENTRIES[3]]]
         MockLoggingClient.return_value.list_entries.side_effect = [
             proj1_iterator,
             proj2_iterator,
