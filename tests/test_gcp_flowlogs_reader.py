@@ -157,7 +157,6 @@ SAMPLE_PAYLODS = [
         },
         'start_time': '2018-04-03T13:47:31.805417512Z',
     },
-
 ]
 
 SAMPLE_ENTRIES = [StructEntry(x, None) for x in SAMPLE_PAYLODS]
@@ -677,8 +676,7 @@ class MainCLITests(TestCase):
             '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
             '2018-04-03T13:48:33\t1020\t20\n'
             '192.0.2.2\t192.0.2.3\t0\t0\t1\t2018-04-03T13:47:31\t'
-            '2018-04-03T13:48:33\t1020\t20\n'
-
+            '2018-04-03T13:48:33\t1020\t20\n',
         )
 
     def test_action_aggregate(self):
