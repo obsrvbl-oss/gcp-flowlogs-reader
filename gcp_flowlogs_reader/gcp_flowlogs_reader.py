@@ -81,8 +81,10 @@ class FlowRecord:
         self.dest_port = int(connection.get('dest_port', 0))
         self.protocol = int(connection['protocol'])
 
-        self.start_time = self._get_dt(flow_payload['start_time'])
         self.end_time = self._get_dt(flow_payload['end_time'])
+        self.start_time = self._get_dt(
+            flow_payload.get('start_time', flow_payload['end_time'])
+        )
 
         self.bytes_sent = int(flow_payload['bytes_sent'])
         self.packets_sent = int(flow_payload['packets_sent'])

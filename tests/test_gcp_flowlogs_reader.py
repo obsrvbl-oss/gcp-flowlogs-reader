@@ -23,7 +23,7 @@ from gcp_flowlogs_reader import (
 )
 
 PREFIX = 'gcp_flowlogs_reader.gcp_flowlogs_reader.{}'.format
-SAMPLE_PAYLODS = [
+SAMPLE_PAYLOADS = [
     {
         'bytes_sent': '491',
         'connection': {
@@ -155,11 +155,10 @@ SAMPLE_PAYLODS = [
             'subnetwork_name': 'yoyo-vpc-1',
             'vpc_name': 'yoyo-vpc-1',
         },
-        'start_time': '2018-04-03T13:47:31.805417512Z',
     },
 ]
 
-SAMPLE_ENTRIES = [StructEntry(x, None) for x in SAMPLE_PAYLODS]
+SAMPLE_ENTRIES = [StructEntry(x, None) for x in SAMPLE_PAYLOADS]
 
 
 class MockIterator:
@@ -219,10 +218,10 @@ class FlowRecordTests(TestCase):
             ('rtt_msec', 61),
             ('reporter', 'DEST'),
             ('src_instance', None),
-            ('dest_instance', InstanceDetails(**SAMPLE_PAYLODS[0]['dest_instance'])),
+            ('dest_instance', InstanceDetails(**SAMPLE_PAYLOADS[0]['dest_instance'])),
             ('src_vpc', None),
-            ('dest_vpc', VpcDetails(**SAMPLE_PAYLODS[0]['dest_vpc'])),
-            ('src_location', GeographicDetails(**SAMPLE_PAYLODS[0]['src_location'])),
+            ('dest_vpc', VpcDetails(**SAMPLE_PAYLOADS[0]['dest_vpc'])),
+            ('src_location', GeographicDetails(**SAMPLE_PAYLOADS[0]['src_location'])),
             ('dest_location', None),
         ]:
             with self.subTest(attr=attr):
@@ -244,12 +243,12 @@ class FlowRecordTests(TestCase):
             ('packets_sent', 6),
             ('rtt_msec', None),
             ('reporter', 'SRC'),
-            ('src_instance', InstanceDetails(**SAMPLE_PAYLODS[1]['src_instance'])),
+            ('src_instance', InstanceDetails(**SAMPLE_PAYLOADS[1]['src_instance'])),
             ('dest_instance', None),
-            ('src_vpc', VpcDetails(**SAMPLE_PAYLODS[1]['src_vpc'])),
+            ('src_vpc', VpcDetails(**SAMPLE_PAYLOADS[1]['src_vpc'])),
             ('dest_vpc', None),
             ('src_location', None),
-            ('dest_location', GeographicDetails(**SAMPLE_PAYLODS[1]['dest_location'])),
+            ('dest_location', GeographicDetails(**SAMPLE_PAYLOADS[1]['dest_location'])),
         ]:
             with self.subTest(attr=attr):
                 actual = getattr(flow_record, attr)
@@ -308,10 +307,10 @@ class FlowRecordTests(TestCase):
             ('rtt_msec', 61),
             ('reporter', 'DEST'),
             ('src_instance', None),
-            ('dest_instance', SAMPLE_PAYLODS[0]['dest_instance']),
+            ('dest_instance', SAMPLE_PAYLOADS[0]['dest_instance']),
             ('src_vpc', None),
-            ('dest_vpc', SAMPLE_PAYLODS[0]['dest_vpc']),
-            ('src_location', SAMPLE_PAYLODS[0]['src_location']),
+            ('dest_vpc', SAMPLE_PAYLOADS[0]['dest_vpc']),
+            ('src_location', SAMPLE_PAYLOADS[0]['src_location']),
             ('dest_location', None),
         ]:
             with self.subTest(attr=attr):
@@ -320,7 +319,7 @@ class FlowRecordTests(TestCase):
 
     def test_from_payload(self):
         self.assertEqual(
-            FlowRecord.from_payload(SAMPLE_PAYLODS[0]),
+            FlowRecord.from_payload(SAMPLE_PAYLOADS[0]),
             FlowRecord(SAMPLE_ENTRIES[0]),
         )
 
@@ -658,7 +657,7 @@ class AggregationTests(TestCase):
                     1,
                     20,
                     1020,
-                    datetime(2018, 4, 3, 13, 47, 31),
+                    datetime(2018, 4, 3, 13, 48, 33),
                     datetime(2018, 4, 3, 13, 48, 33),
                 ),
             ],
@@ -686,7 +685,7 @@ class MainCLITests(TestCase):
             '2018-04-03T13:47:33\t756\t6\n'
             '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
             '2018-04-03T13:48:33\t1020\t20\n'
-            '192.0.2.2\t192.0.2.3\t0\t0\t1\t2018-04-03T13:47:31\t'
+            '192.0.2.2\t192.0.2.3\t0\t0\t1\t2018-04-03T13:48:33\t'
             '2018-04-03T13:48:33\t1020\t20\n',
         )
 
@@ -719,7 +718,7 @@ class MainCLITests(TestCase):
             'start_time\tend_time\tbytes_sent\tpackets_sent\n'
             '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
             '2018-04-03T13:48:33\t1020\t20\n'
-            '192.0.2.2\t192.0.2.3\t0\t0\t1\t2018-04-03T13:47:31\t'
+            '192.0.2.2\t192.0.2.3\t0\t0\t1\t2018-04-03T13:48:33\t'
             '2018-04-03T13:48:33\t1020\t20\n',
         )
 
