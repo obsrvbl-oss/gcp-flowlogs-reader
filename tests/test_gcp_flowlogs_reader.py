@@ -10,6 +10,7 @@ from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME
 from google.api_core.exceptions import GoogleAPIError, PermissionDenied, NotFound
 from google.cloud.logging import Client
 from google.cloud.logging.entries import StructEntry
+from google.cloud.logging.resource import Resource
 from google.oauth2.service_account import Credentials
 
 from gcp_flowlogs_reader.aggregation import aggregated_records
@@ -20,6 +21,7 @@ from gcp_flowlogs_reader import (
     InstanceDetails,
     VpcDetails,
     GeographicDetails,
+    ResourceLabels,
 )
 
 PREFIX = 'gcp_flowlogs_reader.gcp_flowlogs_reader.{}'.format
@@ -322,6 +324,18 @@ class FlowRecordTests(TestCase):
             FlowRecord.from_payload(SAMPLE_PAYLOADS[0]),
             FlowRecord(SAMPLE_ENTRIES[0]),
         )
+
+    def test_resource_labels(self):
+        labels = {
+            'location': 'us-central1-a',
+            'project_id': 'proj1',
+            'subnetwork_id': '3301803660181826306',
+            'subnetwork_name': 'default',
+        }
+
+        resource = Resource(type='gcp_subnetwork', labels=labels)
+        entry = StructEntry(SAMPLE_PAYLOADS[0], None, resource=resource)
+        self.assertEqual(FlowRecord(entry).resource_labels, ResourceLabels(**labels))
 
 
 @patch(PREFIX('LoggingClient'), autospec=TestClient)

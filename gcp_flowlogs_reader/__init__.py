@@ -5,6 +5,7 @@ from .gcp_flowlogs_reader import (
     InstanceDetails,
     VpcDetails,
     GeographicDetails,
+    ResourceLabels,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     'InstanceDetails',
     'VpcDetails',
     'GeographicDetails',
+    'ResourceLabels',
 ]
