@@ -11,7 +11,11 @@ from google.api_core.exceptions import (
 )
 from google.cloud.logging import Client as LoggingClient
 from google.cloud.logging.entries import StructEntry
-from google.cloud.resource_manager import Client as ResourceManagerClient
+
+try:
+    from google.cloud.resource_manager import Client as ResourceManagerClient
+except ImportError:
+    from google.cloud.resourcemanager import ProjectsClient as ResourceManagerClient
 from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
@@ -51,6 +55,13 @@ class GeographicDetails(NamedTuple):
     city: str
 
 
+class ResourceLabels(NamedTuple):
+    project_id: str
+    location: str
+    subnetwork_id: str
+    subnetwork_name: str
+
+
 class FlowRecord:
     src_ip: Union[IPv4Address, IPv6Address]
     src_port: int
@@ -69,6 +80,7 @@ class FlowRecord:
     dest_vpc: Optional[VpcDetails]
     src_location: Optional[GeographicDetails]
     dest_location: Optional[GeographicDetails]
+    resource_labels: Optional[ResourceLabels]
 
     __slots__ = list(__annotations__)
 
@@ -108,6 +120,11 @@ class FlowRecord:
                 setattr(self, attr, None)
             else:
                 setattr(self, attr, value)
+
+        try:
+            self.resource_labels = ResourceLabels(**entry.resource.labels)
+        except (AttributeError, TypeError):
+            self.resource_labels = None
 
     @staticmethod
     def _get_dt(value):
