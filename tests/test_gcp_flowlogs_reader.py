@@ -28,6 +28,7 @@ PREFIX = 'gcp_flowlogs_reader.gcp_flowlogs_reader.{}'.format
 SAMPLE_PAYLOADS = [
     {
         'bytes_sent': '491',
+        'compressed_bytes_sent': '123',
         'connection': {
             'dest_ip': '192.0.2.2',
             'dest_port': 3389.0,
@@ -60,6 +61,7 @@ SAMPLE_PAYLOADS = [
     },
     {
         'bytes_sent': '756',
+        'compressed_bytes_sent': '100',
         'connection': {
             'dest_ip': '198.51.100.75',
             'dest_port': 49444.0,
@@ -91,6 +93,7 @@ SAMPLE_PAYLOADS = [
     },
     {
         'bytes_sent': '1020',
+        'compressed_bytes_sent': '100',
         'connection': {
             'dest_ip': '192.0.2.3',
             'dest_port': 65535.0,
@@ -127,6 +130,7 @@ SAMPLE_PAYLOADS = [
     },
     {
         'bytes_sent': '1020',
+        'compressed_bytes_sent': '80',
         'connection': {
             'dest_ip': '192.0.2.3',
             'protocol': 1.0,
@@ -216,6 +220,7 @@ class FlowRecordTests(TestCase):
             ('start_time', datetime(2018, 4, 3, 13, 47, 37)),
             ('end_time', datetime(2018, 4, 3, 13, 47, 38)),
             ('bytes_sent', 491),
+            ('compressed_bytes_sent', 123),
             ('packets_sent', 4),
             ('rtt_msec', 61),
             ('reporter', 'DEST'),
@@ -242,6 +247,7 @@ class FlowRecordTests(TestCase):
             ('start_time', datetime(2018, 4, 3, 13, 47, 32)),
             ('end_time', datetime(2018, 4, 3, 13, 47, 33)),
             ('bytes_sent', 756),
+            ('compressed_bytes_sent', 100),
             ('packets_sent', 6),
             ('rtt_msec', None),
             ('reporter', 'SRC'),
@@ -290,6 +296,7 @@ class FlowRecordTests(TestCase):
             'start_time: 2018-04-03 13:47:37, '
             'end_time: 2018-04-03 13:47:38, '
             'bytes_sent: 491, '
+            'compressed_bytes_sent: 123, '
             'packets_sent: 4'
         )
         self.assertEqual(actual, expected)
@@ -305,6 +312,7 @@ class FlowRecordTests(TestCase):
             ('start_time', datetime(2018, 4, 3, 13, 47, 37)),
             ('end_time', datetime(2018, 4, 3, 13, 47, 38)),
             ('bytes_sent', 491),
+            ('compressed_bytes_sent', 123),
             ('packets_sent', 4),
             ('rtt_msec', 61),
             ('reporter', 'DEST'),
@@ -634,7 +642,8 @@ class AggregationTests(TestCase):
                     49444,
                     6,
                     12,  # Packets doubled
-                    1512,  # Bytes doubled
+                    1512,  # Bytes doubled,
+                    200,
                     datetime(2018, 4, 2, 13, 47, 32),  # Earliest start
                     datetime(2018, 4, 4, 13, 47, 33),  # Latest finish
                 ),
@@ -655,6 +664,7 @@ class AggregationTests(TestCase):
                     6,
                     26,
                     1776,
+                    200,
                     datetime(2018, 4, 3, 13, 47, 31),
                     datetime(2018, 4, 3, 13, 48, 33),
                 ),
@@ -663,6 +673,7 @@ class AggregationTests(TestCase):
                     6,
                     4,
                     491,
+                    123,
                     datetime(2018, 4, 3, 13, 47, 37),
                     datetime(2018, 4, 3, 13, 47, 38),
                 ),
@@ -671,6 +682,7 @@ class AggregationTests(TestCase):
                     1,
                     20,
                     1020,
+                    80,
                     datetime(2018, 4, 3, 13, 48, 33),
                     datetime(2018, 4, 3, 13, 48, 33),
                 ),
@@ -692,15 +704,15 @@ class MainCLITests(TestCase):
         self.assertEqual(
             output.getvalue(),
             'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
-            'start_time\tend_time\tbytes_sent\tpackets_sent\n'
+            'start_time\tend_time\tbytes_sent\tcompressed_bytes_sent\tpackets_sent\n'
             '198.51.100.75\t192.0.2.2\t49444\t3389\t6\t2018-04-03T13:47:37\t'
-            '2018-04-03T13:47:38\t491\t4\n'
+            '2018-04-03T13:47:38\t491\t123\t4\n'
             '192.0.2.2\t198.51.100.75\t3389\t49444\t6\t2018-04-03T13:47:32\t'
-            '2018-04-03T13:47:33\t756\t6\n'
+            '2018-04-03T13:47:33\t756\t100\t6\n'
             '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
-            '2018-04-03T13:48:33\t1020\t20\n'
+            '2018-04-03T13:48:33\t1020\t100\t20\n'
             '192.0.2.2\t192.0.2.3\t0\t0\t1\t2018-04-03T13:48:33\t'
-            '2018-04-03T13:48:33\t1020\t20\n',
+            '2018-04-03T13:48:33\t1020\t80\t20\n',
         )
 
     def test_action_print_limit(self):
@@ -709,9 +721,9 @@ class MainCLITests(TestCase):
         self.assertEqual(
             output.getvalue(),
             'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
-            'start_time\tend_time\tbytes_sent\tpackets_sent\n'
+            'start_time\tend_time\tbytes_sent\tcompressed_bytes_sent\tpackets_sent\n'
             '198.51.100.75\t192.0.2.2\t49444\t3389\t6\t2018-04-03T13:47:37\t'
-            '2018-04-03T13:47:38\t491\t4\n',
+            '2018-04-03T13:47:38\t491\t123\t4\n',
         )
 
     def test_action_print_error(self):
@@ -729,11 +741,11 @@ class MainCLITests(TestCase):
         self.assertEqual(
             output.getvalue(),
             'src_ip\tdest_ip\tsrc_port\tdest_port\tprotocol\t'
-            'start_time\tend_time\tbytes_sent\tpackets_sent\n'
+            'start_time\tend_time\tbytes_sent\tcompressed_bytes_sent\tpackets_sent\n'
             '192.0.2.2\t192.0.2.3\t3389\t65535\t6\t2018-04-03T13:47:31\t'
-            '2018-04-03T13:48:33\t1020\t20\n'
+            '2018-04-03T13:48:33\t1020\t100\t20\n'
             '192.0.2.2\t192.0.2.3\t0\t0\t1\t2018-04-03T13:48:33\t'
-            '2018-04-03T13:48:33\t1020\t20\n',
+            '2018-04-03T13:48:33\t1020\t80\t20\n',
         )
 
     def test_action_aggregate(self):

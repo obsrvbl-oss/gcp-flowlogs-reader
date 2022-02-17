@@ -18,6 +18,7 @@ def print_header():
         'start_time',
         'end_time',
         'bytes_sent',
+        'compressed_bytes_sent',
         'packets_sent',
         sep='\t',
     )
@@ -33,6 +34,7 @@ def print_record(record):
         record.start_time.strftime('%Y-%m-%dT%H:%M:%S'),
         record.end_time.strftime('%Y-%m-%dT%H:%M:%S'),
         record.bytes_sent,
+        record.compressed_bytes_sent,
         record.packets_sent,
         sep='\t',
     )
