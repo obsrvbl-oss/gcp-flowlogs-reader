@@ -71,7 +71,6 @@ class FlowRecord:
     start_time: datetime
     end_time: datetime
     bytes_sent: int
-    compressed_bytes_sent: int
     packets_sent: int
     rtt_msec: Optional[int]
     reporter: str
@@ -100,7 +99,6 @@ class FlowRecord:
         )
 
         self.bytes_sent = int(flow_payload['bytes_sent'])
-        self.compressed_bytes_sent = int(flow_payload['compressed_bytes_sent'])
         self.packets_sent = int(flow_payload['packets_sent'])
 
         rtt_msec = flow_payload.get('rtt_msec')
@@ -152,7 +150,7 @@ class FlowRecord:
         )
 
     def __str__(self):
-        return ', '.join(f'{x}: {getattr(self, x)}' for x in self.__slots__[:10])
+        return ', '.join(f'{x}: {getattr(self, x)}' for x in self.__slots__[:9])
 
     def to_dict(self):
         nt_types = (InstanceDetails, VpcDetails, GeographicDetails)
