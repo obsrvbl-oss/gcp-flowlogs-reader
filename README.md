@@ -101,23 +101,24 @@ VPC Flow Logs entry into a Python object with standard types:
 ```
 | Attribute     | Type                 | Example                                                                                              |
 |---------------|----------------------|------------------------------------------------------------------------------------------------------|
-| src_ip        | ipaddress.ip_address | ipaddress.ip_address('192.0.2.2')                                                                    |
-| src_port      | int                  | 3389                                                                                                 |
-| dest_ip       | ipaddress.ip_address | ipaddress.ip_address('198.51.100.1')                                                                 |
-| dest_port     | int                  | 49152                                                                                                |
-| protocol      | int                  | 6                                                                                                    |
-| start_time    | datetime.datetime    | datetime.datetime(2018, 4, 4, 11, 55, 12, 943517)                                                    |
-| end_time      | datetime.datetime    | datetime.datetime(2018, 4, 4, 11, 55, 14, 125304)                                                    |
-| bytes_sent    | int                  | 4446                                                                                                 |
-| packets_sent  | int                  | 13                                                                                                   |
-| rtt_msec      | int                  | 233                                                                                                  |
-| reporter      | str                  | 'SRC'                                                                                                |
-| src_instance  | namedtuple           | InstanceDetails(project_id='yoyodyne-1020', vm_name='vm-1020', region='us-west1', zone='us-west1-a') |
-| dest_instance | namedtuple           | InstanceDetails(project_id='yoyodyne-1020', vm_name='vm-1020', region='us-west1', zone='us-west1-a') |
-| src_vpc       | namedtuple           | VpcDetails(project_id='yoyo-1020', vpc_name='prod-vpc-3', subnetwork_name='prod-net-3')              |
-| dest_vpc      | namedtuple           | VpcDetails(project_id='yoyo-1020', vpc_name='prod-vpc-3', subnetwork_name='prod-net-3')              |
-| src_location  | namedtuple           | GeographicDetails(continent='America', country='usa', region='California', city='Santa Teresa')      |
-| dest_location | namedtuple           | GeographicDetails(continent='America', country='usa', region='California', city='Santa Teresa')      |
+| src_ip          | ipaddress.ip_address | ipaddress.ip_address('192.0.2.2')                                                                    |
+| src_port        | int                  | 3389                                                                                                 |
+| dest_ip         | ipaddress.ip_address | ipaddress.ip_address('198.51.100.1')                                                                 |
+| dest_port       | int                  | 49152                                                                                                |
+| protocol        | int                  | 6                                                                                                    |
+| start_time      | datetime.datetime    | datetime.datetime(2018, 4, 4, 11, 55, 12, 943517)                                                    |
+| end_time        | datetime.datetime    | datetime.datetime(2018, 4, 4, 11, 55, 14, 125304)                                                    |
+| bytes_sent      | int                  | 4446                                                                                                 |
+| packets_sent    | int                  | 13                                                                                                   |
+| bytes_processed | int                  | 123                                                                                                  |
+| rtt_msec        | int                  | 233                                                                                                  |
+| reporter        | str                  | 'SRC'                                                                                                |
+| src_instance    | namedtuple           | InstanceDetails(project_id='yoyodyne-1020', vm_name='vm-1020', region='us-west1', zone='us-west1-a') |
+| dest_instance   | namedtuple           | InstanceDetails(project_id='yoyodyne-1020', vm_name='vm-1020', region='us-west1', zone='us-west1-a') |
+| src_vpc         | namedtuple           | VpcDetails(project_id='yoyo-1020', vpc_name='prod-vpc-3', subnetwork_name='prod-net-3')              |
+| dest_vpc        | namedtuple           | VpcDetails(project_id='yoyo-1020', vpc_name='prod-vpc-3', subnetwork_name='prod-net-3')              |
+| src_location    | namedtuple           | GeographicDetails(continent='America', country='usa', region='California', city='Santa Teresa')      |
+| dest_location   | namedtuple           | GeographicDetails(continent='America', country='usa', region='California', city='Santa Teresa')      |
 ```
 
 `gcp_flowlogs_reader.Reader` acts as an iterator over flows from the logs:
