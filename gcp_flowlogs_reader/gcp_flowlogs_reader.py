@@ -229,6 +229,7 @@ class Reader:
         self.wait_time = wait_time
         self.filters = filters or []
         self.iterator = self._reader()
+        self.bytes_processed = 0
 
     def __iter__(self):
         return self
@@ -279,6 +280,7 @@ class Reader:
                     page_size=self.page_size,
                     projects=[project],
                 ):
+                    self.bytes_processed += flow_entry.__sizeof__()
                     yield FlowRecord(flow_entry)
             except (Forbidden, NotFound):  # Expected for removed/restricted projects
                 pass
