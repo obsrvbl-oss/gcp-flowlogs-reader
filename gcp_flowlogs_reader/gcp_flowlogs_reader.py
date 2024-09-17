@@ -62,6 +62,11 @@ class ResourceLabels(NamedTuple):
     subnetwork_name: str
 
 
+def safe_tuple_from_dict(cls, attrs):
+    attr_payload = {k: attrs[k] for k in cls._fields}
+    return cls(**attr_payload)
+
+
 class FlowRecord:
     src_ip: Union[IPv4Address, IPv6Address]
     src_port: int
@@ -115,7 +120,7 @@ class FlowRecord:
             ('dest_location', GeographicDetails),
         ]:
             try:
-                value = cls(**flow_payload[attr])
+                value = safe_tuple_from_dict(cls, flow_payload[attr])
             except (KeyError, TypeError):
                 setattr(self, attr, None)
             else:
