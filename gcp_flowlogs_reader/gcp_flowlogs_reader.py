@@ -115,7 +115,8 @@ class FlowRecord:
             ('dest_location', GeographicDetails),
         ]:
             try:
-                value = cls(**flow_payload[attr])
+                attr_payload = {k: flow_payload[k] for k in cls._fields}
+                value = cls(**attr_payload)
             except (KeyError, TypeError):
                 setattr(self, attr, None)
             else:
