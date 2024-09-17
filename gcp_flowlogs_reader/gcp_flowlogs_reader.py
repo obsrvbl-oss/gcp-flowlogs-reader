@@ -121,7 +121,7 @@ class FlowRecord:
         ]:
             try:
                 value = safe_tuple_from_dict(cls, flow_payload[attr])
-            except (KeyError, TypeError) as e:
+            except (KeyError, TypeError):
                 setattr(self, attr, None)
             else:
                 setattr(self, attr, value)
