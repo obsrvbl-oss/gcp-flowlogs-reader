@@ -44,6 +44,7 @@ SAMPLE_PAYLOADS = [
         'dest_vpc': {
             'project_id': 'yoyodyne-102010',
             'subnetwork_name': 'yoyo-vpc-1',
+            'subnetwork_region': 'sunnydale1',
             'vpc_name': 'yoyo-vpc-1',
         },
         'end_time': '2018-04-03T13:47:38.401Z',
@@ -85,6 +86,7 @@ SAMPLE_PAYLOADS = [
         'src_vpc': {
             'project_id': 'yoyodyne-102010',
             'subnetwork_name': 'yoyo-vpc-1',
+            'subnetwork_region': 'sunnydale2',
             'vpc_name': 'yoyo-vpc-1',
         },
         'start_time': '2018-04-03T13:47:32.805417512Z',
