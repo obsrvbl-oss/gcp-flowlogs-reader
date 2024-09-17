@@ -502,7 +502,7 @@ class ReaderTests(TestCase):
         actual = list(reader)
         expected = [FlowRecord(x) for x in SAMPLE_ENTRIES]
         self.assertEqual(actual, expected)
-        self.assertEqual(reader.bytes_processed, 544)
+        self.assertEqual(reader.bytes_processed, 576)
 
         # Test the client getting called correctly with multiple projects
         expression = (
