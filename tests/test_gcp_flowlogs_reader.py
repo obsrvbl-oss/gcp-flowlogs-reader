@@ -224,10 +224,23 @@ class FlowRecordTests(TestCase):
             ('rtt_msec', 61),
             ('reporter', 'DEST'),
             ('src_instance', None),
-            ('dest_instance', safe_tuple_from_dict(InstanceDetails, SAMPLE_PAYLOADS[0]['dest_instance'])),
+            (
+                'dest_instance',
+                safe_tuple_from_dict(
+                    InstanceDetails, SAMPLE_PAYLOADS[0]['dest_instance']
+                ),
+            ),
             ('src_vpc', None),
-            ('dest_vpc', safe_tuple_from_dict(VpcDetails, SAMPLE_PAYLOADS[0]['dest_vpc'])),
-            ('src_location', safe_tuple_from_dict(GeographicDetails, SAMPLE_PAYLOADS[0]['src_location'])),
+            (
+                'dest_vpc',
+                safe_tuple_from_dict(VpcDetails, SAMPLE_PAYLOADS[0]['dest_vpc']),
+            ),
+            (
+                'src_location',
+                safe_tuple_from_dict(
+                    GeographicDetails, SAMPLE_PAYLOADS[0]['src_location']
+                ),
+            ),
             ('dest_location', None),
         ]:
             with self.subTest(attr=attr):
@@ -249,12 +262,25 @@ class FlowRecordTests(TestCase):
             ('packets_sent', 6),
             ('rtt_msec', None),
             ('reporter', 'SRC'),
-            ('src_instance', safe_tuple_from_dict(InstanceDetails, SAMPLE_PAYLOADS[1]['src_instance'])),
+            (
+                'src_instance',
+                safe_tuple_from_dict(
+                    InstanceDetails, SAMPLE_PAYLOADS[1]['src_instance']
+                ),
+            ),
             ('dest_instance', None),
-            ('src_vpc', safe_tuple_from_dict(VpcDetails, SAMPLE_PAYLOADS[1]['src_vpc'])),
+            (
+                'src_vpc',
+                safe_tuple_from_dict(VpcDetails, SAMPLE_PAYLOADS[1]['src_vpc']),
+            ),
             ('dest_vpc', None),
             ('src_location', None),
-            ('dest_location', safe_tuple_from_dict(GeographicDetails, SAMPLE_PAYLOADS[1]['dest_location'])),
+            (
+                'dest_location',
+                safe_tuple_from_dict(
+                    GeographicDetails, SAMPLE_PAYLOADS[1]['dest_location']
+                ),
+            ),
         ]:
             with self.subTest(attr=attr):
                 actual = getattr(flow_record, attr)
@@ -322,7 +348,9 @@ class FlowRecordTests(TestCase):
             with self.subTest(attr=attr):
                 actual = flow_dict[attr]
                 if isinstance(expected, dict):
-                    expected = {k: v for k, v in expected.items() if k != 'subnetwork_region'}
+                    expected = {
+                        k: v for k, v in expected.items() if k != 'subnetwork_region'
+                    }
                 self.assertEqual(actual, expected)
 
     def test_from_payload(self):

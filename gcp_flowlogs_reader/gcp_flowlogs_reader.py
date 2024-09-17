@@ -67,7 +67,6 @@ def safe_tuple_from_dict(cls, attrs):
     return cls(**attr_payload)
 
 
-
 class FlowRecord:
     src_ip: Union[IPv4Address, IPv6Address]
     src_port: int
