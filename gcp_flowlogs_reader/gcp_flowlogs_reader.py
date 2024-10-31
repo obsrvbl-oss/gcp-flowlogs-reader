@@ -1,16 +1,17 @@
 from datetime import datetime, timedelta
 from ipaddress import ip_address, IPv4Address, IPv6Address
-from time import sleep
 from typing import NamedTuple, Optional, Union
 
 from google.api_core.exceptions import (
     Forbidden,
     GoogleAPIError,
-    NotFound,
-    TooManyRequests,
+    NotFound
 )
-from google.cloud.logging import Client as LoggingClient
-from google.cloud.logging.entries import StructEntry
+
+from google.cloud.logging import (
+    Client as LoggingClient,
+    StructEntry
+)
 
 try:
     from google.cloud.resource_manager import Client as ResourceManagerClient
@@ -19,20 +20,6 @@ except ImportError:
 from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
-
-
-def page_helper(logging_client, wait_time=1.0, **kwargs):
-    kwargs['page_token'] = None
-    while True:
-        try:
-            iterator = logging_client.list_entries(**kwargs)
-            for page in iterator.pages:
-                kwargs['page_token'] = iterator.next_page_token
-                yield from page
-            break
-        except TooManyRequests:
-            sleep(wait_time)
-            pass
 
 
 class InstanceDetails(NamedTuple):
@@ -278,12 +265,10 @@ class Reader:
 
         for project in self.project_list:
             try:
-                for flow_entry in page_helper(
-                    self.logging_client,
-                    wait_time=self.wait_time,
+                for flow_entry in self.logging_client.list_entries(
                     filter_=' AND '.join(filters),
                     page_size=self.page_size,
-                    projects=[project],
+                    resource_names=[f'projects/{project}'],
                 ):
                     self.bytes_processed += flow_entry.__sizeof__()
                     yield FlowRecord(flow_entry)
