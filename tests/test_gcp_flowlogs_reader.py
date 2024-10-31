@@ -9,8 +9,7 @@ from tempfile import NamedTemporaryFile
 from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME
 from google.api_core.exceptions import GoogleAPIError, PermissionDenied, NotFound
 from google.cloud.logging import Client
-from google.cloud.logging.entries import StructEntry
-from google.cloud.logging.resource import Resource
+from google.cloud.logging import StructEntry, Resource
 from google.oauth2.service_account import Credentials
 
 from gcp_flowlogs_reader.aggregation import aggregated_records
