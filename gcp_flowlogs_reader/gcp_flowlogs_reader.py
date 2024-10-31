@@ -32,7 +32,7 @@ def page_helper(logging_client, wait_time=1.0, **kwargs):
     # handle google-cloud-logging >= 3.0
     if gcp_logging_version[0] == '3':
         # the project arg in google-cloud-logging >= 3.0 was changes to resource_names
-        if kwargs['projects']:
+        if 'projects' in kwargs:
             kwargs['resource_names'] = [
                 f'projects/{project}' for project in kwargs['projects']
             ]

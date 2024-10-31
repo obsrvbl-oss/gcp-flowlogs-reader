@@ -6,7 +6,7 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch, call
 from tempfile import NamedTemporaryFile
 
-from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME
+from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME, page_helper
 from google.api_core.exceptions import GoogleAPIError, PermissionDenied, NotFound
 from google.cloud.logging import Client
 from google.cloud.logging import StructEntry, Resource
@@ -181,6 +181,11 @@ class MockIterator:
         return ''
 
 
+class MockV3Iterator:
+    def __iter__(self):
+        return iter(SAMPLE_ENTRIES[0])
+
+
 class MockFailedIterator:
     def __init__(self):
         self.pages = self
@@ -217,6 +222,17 @@ class TestClient(Client):
         page_token=None,
     ):
         pass
+
+
+class V3PageHelperTests(TestCase):
+    def test_init_outbound(self):
+        MockLoggingClient = MagicMock()
+        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+        iterator = page_helper(logging_client=MockLoggingClient(), projects=['proj1'])
+        self.assertEqual(list(iterator), SAMPLE_ENTRIES)
+        MockLoggingClient.return_value.list_entries.assert_called_with(
+            resource_names=['projects/proj1']
+        )
 
 
 class FlowRecordTests(TestCase):
