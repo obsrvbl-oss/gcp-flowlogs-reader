@@ -11,8 +11,9 @@ from google.api_core.exceptions import (
 )
 from google.cloud.logging import (
     Client as LoggingClient,
-    __version__ as gcp_logging_version
+    __version__ as gcp_logging_version,
 )
+
 try:
     from google.cloud.logging import StructEntry
 except ImportError:
