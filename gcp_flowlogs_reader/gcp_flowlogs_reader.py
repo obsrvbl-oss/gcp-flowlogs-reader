@@ -45,9 +45,9 @@ def page_helper(logging_client, wait_time=1.0, **kwargs):
 
     # google-cloud-logging < 3.0 requires us to handle paging
     kwargs['page_token'] = None
-    iterator = logging_client.list_entries(**kwargs)
     while True:
         try:
+            iterator = logging_client.list_entries(**kwargs)
             for page in iterator.pages:
                 kwargs['page_token'] = iterator.next_page_token
                 yield from page
