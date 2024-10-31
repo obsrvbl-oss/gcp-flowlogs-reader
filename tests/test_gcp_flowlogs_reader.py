@@ -206,6 +206,18 @@ class MockNotFoundIterator:
 class TestClient(Client):
     _credentials = ''
 
+    def list_entries(
+        self,
+        *,
+        projects=None,
+        filter_=None,
+        order_by=None,
+        max_results=None,
+        page_size=None,
+        page_token=None,
+    ):
+        pass
+
 
 class FlowRecordTests(TestCase):
     def test_init_outbound(self):
@@ -372,6 +384,7 @@ class FlowRecordTests(TestCase):
 
 
 @patch(PREFIX('LoggingClient'), autospec=TestClient)
+@patch(PREFIX('gcp_logging_version'), '1.12.2')
 class ReaderTests(TestCase):
     def test_init_with_client(self, MockLoggingClient):
         logging_client = MagicMock(Client)
@@ -712,10 +725,10 @@ class AggregationTests(TestCase):
         )
 
 
+@patch(PREFIX('gcp_logging_version'), '1.12.2')
 class MainCLITests(TestCase):
     def setUp(self):
-        patch_path = PREFIX('LoggingClient')
-        with patch(patch_path, autospec=True) as MockLoggingClient:
+        with patch(PREFIX('LoggingClient'), autospec=TestClient) as MockLoggingClient:
             MockLoggingClient.return_value.project = 'yoyodyne-102010'
             MockLoggingClient.return_value.list_entries.return_value = MockIterator()
             self.reader = Reader()
