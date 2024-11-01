@@ -6,11 +6,10 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch, call
 from tempfile import NamedTemporaryFile
 
-from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME
+from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME, page_helper
 from google.api_core.exceptions import GoogleAPIError, PermissionDenied, NotFound
 from google.cloud.logging import Client
-from google.cloud.logging.entries import StructEntry
-from google.cloud.logging.resource import Resource
+from google.cloud.logging import StructEntry, Resource
 from google.oauth2.service_account import Credentials
 
 from gcp_flowlogs_reader.aggregation import aggregated_records
@@ -207,6 +206,29 @@ class MockNotFoundIterator:
 class TestClient(Client):
     _credentials = ''
 
+    def list_entries(
+        self,
+        *,
+        projects=None,
+        filter_=None,
+        order_by=None,
+        max_results=None,
+        page_size=None,
+        page_token=None,
+    ):
+        pass
+
+
+class V3PageHelperTests(TestCase):
+    def test_init_outbound(self):
+        MockLoggingClient = MagicMock()
+        MockLoggingClient.return_value.list_entries.return_value = iter(SAMPLE_ENTRIES)
+        iterator = page_helper(logging_client=MockLoggingClient(), projects=['proj1'])
+        self.assertEqual(list(iterator), SAMPLE_ENTRIES)
+        MockLoggingClient.return_value.list_entries.assert_called_with(
+            resource_names=['projects/proj1']
+        )
+
 
 class FlowRecordTests(TestCase):
     def test_init_outbound(self):
@@ -373,6 +395,7 @@ class FlowRecordTests(TestCase):
 
 
 @patch(PREFIX('LoggingClient'), autospec=TestClient)
+@patch(PREFIX('gcp_logging_version'), '1.12.2')
 class ReaderTests(TestCase):
     def test_init_with_client(self, MockLoggingClient):
         logging_client = MagicMock(Client)
@@ -713,10 +736,10 @@ class AggregationTests(TestCase):
         )
 
 
+@patch(PREFIX('gcp_logging_version'), '1.12.2')
 class MainCLITests(TestCase):
     def setUp(self):
-        patch_path = PREFIX('LoggingClient')
-        with patch(patch_path, autospec=True) as MockLoggingClient:
+        with patch(PREFIX('LoggingClient'), autospec=TestClient) as MockLoggingClient:
             MockLoggingClient.return_value.project = 'yoyodyne-102010'
             MockLoggingClient.return_value.list_entries.return_value = MockIterator()
             self.reader = Reader()

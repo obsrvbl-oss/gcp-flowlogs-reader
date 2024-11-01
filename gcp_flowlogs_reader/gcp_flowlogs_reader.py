@@ -9,8 +9,15 @@ from google.api_core.exceptions import (
     NotFound,
     TooManyRequests,
 )
-from google.cloud.logging import Client as LoggingClient
-from google.cloud.logging.entries import StructEntry
+from google.cloud.logging import (
+    Client as LoggingClient,
+    __version__ as gcp_logging_version,
+)
+
+try:
+    from google.cloud.logging import StructEntry
+except ImportError:
+    from google.cloud.logging.entries import StructEntry
 
 try:
     from google.cloud.resource_manager import Client as ResourceManagerClient
@@ -22,6 +29,21 @@ BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
 
 
 def page_helper(logging_client, wait_time=1.0, **kwargs):
+    # handle google-cloud-logging >= 3.0
+    if gcp_logging_version[0] == '3':
+        # the project arg in google-cloud-logging >= 3.0 was changed to resource_names
+        if 'projects' in kwargs:
+            kwargs['resource_names'] = [
+                f'projects/{project}' for project in kwargs['projects']
+            ]
+            del kwargs['projects']
+        # google-cloud-logging >= 3.0 handles paging internally
+        iterator = logging_client.list_entries(**kwargs)
+        for entry in iterator:
+            yield entry
+        return
+
+    # google-cloud-logging < 3.0 requires us to handle paging
     kwargs['page_token'] = None
     while True:
         try:
