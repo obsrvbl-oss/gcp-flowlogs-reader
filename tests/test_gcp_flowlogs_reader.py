@@ -181,11 +181,6 @@ class MockIterator:
         return ''
 
 
-class MockV3Iterator:
-    def __iter__(self):
-        return iter(SAMPLE_ENTRIES[0])
-
-
 class MockFailedIterator:
     def __init__(self):
         self.pages = self
