@@ -38,10 +38,15 @@ def page_helper(logging_client, wait_time=1.0, **kwargs):
             ]
             del kwargs['projects']
         # google-cloud-logging >= 3.0 handles paging internally
-        iterator = logging_client.list_entries(**kwargs)
-        for entry in iterator:
-            yield entry
-        return
+        while True:
+            try:
+                iterator = logging_client.list_entries(**kwargs)
+                for entry in iterator:
+                    yield entry
+                return
+            except TooManyRequests:
+                sleep(wait_time)
+                pass
 
     # google-cloud-logging < 3.0 requires us to handle paging
     kwargs['page_token'] = None
