@@ -30,7 +30,6 @@ from gcp_flowlogs_reader import (
 from gcp_flowlogs_reader.gcp_flowlogs_reader import safe_tuple_from_dict
 from gcp_flowlogs_reader.gcp_flowlogs_reader import _entry_dedupe_key
 
-
 PREFIX = 'gcp_flowlogs_reader.gcp_flowlogs_reader.{}'.format
 SAMPLE_PAYLOADS = [
     {
