@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 from ipaddress import ip_address, IPv4Address, IPv6Address
+import json
+from collections import OrderedDict
 from time import sleep
 from typing import NamedTuple, Optional, Union
 
@@ -26,9 +28,40 @@ except ImportError:
 from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
+DEFAULT_DEDUPE_CACHE_SIZE = 100000
 
 
-def page_helper(logging_client, wait_time=1.0, **kwargs):
+def _entry_dedupe_key(entry):
+    payload = getattr(entry, 'payload', None)
+    if isinstance(payload, dict):
+        payload_repr = json.dumps(payload, sort_keys=True, default=str)
+    else:
+        payload_repr = str(payload)
+
+    log_name = getattr(entry, 'log_name', None)
+
+    return (
+        'payload_log_name',
+        payload_repr,
+        str(log_name),
+    )
+
+
+def _remember_seen(dedupe_cache, dedupe_key, max_dedupe_keys):
+    if dedupe_key in dedupe_cache:
+        dedupe_cache.move_to_end(dedupe_key)
+        return True
+
+    dedupe_cache[dedupe_key] = None
+    if len(dedupe_cache) > max_dedupe_keys:
+        dedupe_cache.popitem(last=False)
+    return False
+
+
+def page_helper(logging_client, wait_time=1.0, max_dedupe_keys=None, **kwargs):
+    max_dedupe_keys = max_dedupe_keys or DEFAULT_DEDUPE_CACHE_SIZE
+    dedupe_cache = OrderedDict()
+
     # handle google-cloud-logging >= 3.0
     if gcp_logging_version[0] == '3':
         # the project arg in google-cloud-logging >= 3.0 was changed to resource_names
@@ -42,6 +75,9 @@ def page_helper(logging_client, wait_time=1.0, **kwargs):
             try:
                 iterator = logging_client.list_entries(**kwargs)
                 for entry in iterator:
+                    dedupe_key = _entry_dedupe_key(entry)
+                    if _remember_seen(dedupe_cache, dedupe_key, max_dedupe_keys):
+                        continue
                     yield entry
                 return
             except TooManyRequests:

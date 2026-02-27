@@ -7,7 +7,12 @@ from unittest.mock import MagicMock, patch, call
 from tempfile import NamedTemporaryFile
 
 from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME, page_helper
-from google.api_core.exceptions import GoogleAPIError, PermissionDenied, NotFound
+from google.api_core.exceptions import (
+    GoogleAPIError,
+    PermissionDenied,
+    NotFound,
+    TooManyRequests,
+)
 from google.cloud.logging import Client
 from google.cloud.logging import StructEntry, Resource
 from google.oauth2.service_account import Credentials
@@ -23,6 +28,7 @@ from gcp_flowlogs_reader import (
     ResourceLabels,
 )
 from gcp_flowlogs_reader.gcp_flowlogs_reader import safe_tuple_from_dict
+from gcp_flowlogs_reader.gcp_flowlogs_reader import _entry_dedupe_key
 
 
 PREFIX = 'gcp_flowlogs_reader.gcp_flowlogs_reader.{}'.format
@@ -228,6 +234,41 @@ class V3PageHelperTests(TestCase):
         MockLoggingClient.return_value.list_entries.assert_called_with(
             resource_names=['projects/proj1']
         )
+
+    @patch(PREFIX('gcp_logging_version'), '3.0.0')
+    @patch(PREFIX('sleep'), autospec=True)
+    def test_too_many_requests_retry(self, mock_sleep):
+        mock_logging_client = MagicMock()
+        mock_logging_client.list_entries.side_effect = [
+            TooManyRequests('rate limited'),
+            iter(SAMPLE_ENTRIES),
+        ]
+
+        iterator = page_helper(logging_client=mock_logging_client, projects=['proj1'])
+        self.assertEqual(list(iterator), SAMPLE_ENTRIES)
+
+        self.assertEqual(mock_logging_client.list_entries.call_count, 2)
+        mock_sleep.assert_called_once_with(1.0)
+
+    @patch(PREFIX('gcp_logging_version'), '3.0.0')
+    @patch(PREFIX('sleep'), autospec=True)
+    def test_too_many_requests_mid_stream_no_duplicates(self, mock_sleep):
+        class FailingAfterOneEntry:
+            def __iter__(self):
+                yield SAMPLE_ENTRIES[0]
+                raise TooManyRequests('rate limited')
+
+        mock_logging_client = MagicMock()
+        mock_logging_client.list_entries.side_effect = [
+            FailingAfterOneEntry(),
+            iter(SAMPLE_ENTRIES),
+        ]
+
+        iterator = page_helper(logging_client=mock_logging_client, projects=['proj1'])
+        self.assertEqual(list(iterator), SAMPLE_ENTRIES)
+
+        self.assertEqual(mock_logging_client.list_entries.call_count, 2)
+        mock_sleep.assert_called_once_with(1.0)
 
 
 class FlowRecordTests(TestCase):
@@ -511,6 +552,25 @@ class ReaderTests(TestCase):
             projects=['yoyodyne-102010'],
             page_token=None,
         )
+
+    @patch(PREFIX('sleep'), autospec=True)
+    def test_iteration_retries_too_many_requests(self, mock_sleep, MockLoggingClient):
+        MockLoggingClient.return_value.project = 'yoyodyne-102010'
+        MockLoggingClient.return_value.list_entries.side_effect = [
+            TooManyRequests('rate limited'),
+            MockIterator(),
+        ]
+
+        earlier = datetime(2018, 4, 3, 9, 51, 22)
+        later = datetime(2018, 4, 3, 10, 51, 33)
+        reader = Reader(start_time=earlier, end_time=later, log_name='my_log')
+
+        actual = list(reader)
+        expected = [FlowRecord(x) for x in SAMPLE_ENTRIES]
+        self.assertEqual(actual, expected)
+
+        self.assertEqual(MockLoggingClient.return_value.list_entries.call_count, 2)
+        mock_sleep.assert_called_once_with(1.0)
 
     @patch(PREFIX('ResourceManagerClient'), autospec=True)
     @patch(PREFIX('Credentials'), autospec=True)
@@ -851,3 +911,49 @@ class MainCLITests(TestCase):
             )
         self.assertEqual(len(output.getvalue().splitlines()), 5)
         self.assertIn(call().list_projects(), MockResourceManagerClient.mock_calls)
+
+
+class DedupeKeyTests(TestCase):
+    def test_uses_payload_and_log_name(self):
+        class Entry:
+            payload = {'a': 1}
+            log_name = 'projects/proj1/logs/compute.googleapis.com%2Fvpc_flows'
+
+        key = _entry_dedupe_key(Entry())
+        self.assertEqual(
+            key,
+            (
+                'payload_log_name',
+                '{"a": 1}',
+                'projects/proj1/logs/compute.googleapis.com%2Fvpc_flows',
+            ),
+        )
+
+    def test_fallback_to_string_none_when_log_name_missing(self):
+        class Entry:
+            payload = {'b': 2}
+
+        key = _entry_dedupe_key(Entry())
+        self.assertEqual(
+            key,
+            (
+                'payload_log_name',
+                '{"b": 2}',
+                'None',
+            ),
+        )
+
+    def test_non_dict_payload_uses_string_representation(self):
+        class Entry:
+            payload = 'raw-payload'
+            log_name = 'projects/proj2/logs/custom'
+
+        key = _entry_dedupe_key(Entry())
+        self.assertEqual(
+            key,
+            (
+                'payload_log_name',
+                'raw-payload',
+                'projects/proj2/logs/custom',
+            ),
+        )
