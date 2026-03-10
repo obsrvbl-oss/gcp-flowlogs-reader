@@ -4,22 +4,15 @@ from time import sleep
 from typing import NamedTuple, Optional, Union
 
 from google.api_core.exceptions import (
-    DeadlineExceeded,
     Forbidden,
     GoogleAPIError,
-    InternalServerError,
     NotFound,
-    ServiceUnavailable,
     TooManyRequests,
 )
-from google.api_core.retry import Retry, if_exception_type
 from google.cloud.logging import (
     Client as LoggingClient,
     __version__ as gcp_logging_version,
 )
-from google.cloud.logging_v2 import _gapic
-from google.cloud.logging_v2.types import ListLogEntriesRequest
-from google.cloud.logging_v2.types import LogEntry
 
 try:
     from google.cloud.logging import StructEntry
@@ -34,23 +27,37 @@ from google.oauth2.service_account import Credentials
 
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
 
-# Custom retry that includes TooManyRequests (429) in addition to the
-# default transient errors.  Applied per-page by the gapic pager so
-# each individual page fetch is retried with exponential backoff.
-DEFAULT_RETRY = Retry(
-    initial=1.0,
-    maximum=60.0,
-    multiplier=2.0,
-    predicate=if_exception_type(
-        TooManyRequests,
-        DeadlineExceeded,
-    ),
-    deadline=300.0,
-)
+
+def _extract_page_token(iterator):
+    """Extract the current page token from a v3 list_entries generator.
+
+    Reaches into generator frame locals to read the page token from the
+    underlying pager. Supports both gRPC and HTTP transport paths.
+    """
+    try:
+        frame = iterator.gi_frame
+        if frame is None:
+            return None
+        locals_ = frame.f_locals
+
+        # gRPC path: log_entries_pager(log_iter)
+        if 'log_iter' in locals_:
+            inner_frame = locals_['log_iter'].gi_frame
+            if inner_frame is not None:
+                pager = inner_frame.f_locals.get('self')
+                if pager is not None:
+                    return pager._response.next_page_token or None
+
+        # HTTP path: _entries_pager(page_iter)
+        if 'page_iter' in locals_:
+            return locals_['page_iter'].next_page_token
+    except (AttributeError, KeyError):
+        pass
+
+    return None
 
 
 def page_helper(logging_client, wait_time=1.0, **kwargs):
-    print(f"Fetching with filter: {kwargs.get('filter_')}")
     # handle google-cloud-logging >= 3.0
     if gcp_logging_version[0] == '3':
         # the project arg in google-cloud-logging >= 3.0 was changed to resource_names
@@ -60,33 +67,19 @@ def page_helper(logging_client, wait_time=1.0, **kwargs):
             ]
             del kwargs['projects']
 
-        # Use the low-level gapic client so we can pass a custom Retry
-        # that handles 429s. The pager manages page_token automatically.
-        gapic_client = logging_client.logging_api._gapic_api
+        kwargs['page_token'] = None
+        while True:
+            try:
+                entry_num = 0
+                iterator = logging_client.list_entries(**kwargs)
+                for entry in iterator:
+                    token = _extract_page_token(iterator)
+                    kwargs['page_token'] = token
+                    yield entry
+                break
+            except TooManyRequests:
+                sleep(wait_time)
 
-        request = ListLogEntriesRequest(
-            resource_names=kwargs.get('resource_names', []),
-            filter=kwargs.get('filter_', ''),
-            order_by='timestamp asc',
-            page_size=kwargs.get('page_size', 0),
-        )
-
-        # The gapic pager applies retry to every page fetch (including the
-        # first).  On rate-limit (429) it backs off automatically.
-        pager = gapic_client.list_log_entries(
-            request=request,
-            retry=DEFAULT_RETRY,
-            timeout=DEFAULT_RETRY.deadline,
-        )
-
-        # Parse gapic LogEntry protos back into high-level StructEntry
-        # objects via the same bridge the high-level Client uses.
-        loggers = {}
-        for entry in pager:
-            log_entry_dict = _gapic._parse_log_entry(LogEntry.pb(entry))
-            yield _gapic.entry_from_resource(
-                log_entry_dict, logging_client, loggers=loggers
-            )
         return
 
     # google-cloud-logging < 3.0 requires us to handle paging
@@ -252,7 +245,7 @@ class Reader:
         logging_client=None,
         service_account_json=None,
         service_account_info=None,
-        page_size=1000,
+        page_size=2,
         wait_time=1.0,
         **kwargs,
     ):
