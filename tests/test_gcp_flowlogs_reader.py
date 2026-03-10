@@ -6,7 +6,11 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch, call
 from tempfile import NamedTemporaryFile
 
-from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME, page_helper
+from gcp_flowlogs_reader.gcp_flowlogs_reader import (
+    BASE_LOG_NAME,
+    page_helper,
+    _extract_page_token,
+)
 from google.api_core.exceptions import (
     GoogleAPIError,
     PermissionDenied,
@@ -930,3 +934,72 @@ class MainCLITests(TestCase):
             )
         self.assertEqual(len(output.getvalue().splitlines()), 5)
         self.assertIn(call().list_projects(), MockResourceManagerClient.mock_calls)
+
+
+class ExtractPageTokenTests(TestCase):
+    def test_returns_none_for_exhausted_generator(self):
+        """An exhausted generator has gi_frame=None."""
+
+        def gen():
+            yield 1
+
+        g = gen()
+        list(g)  # exhaust it
+        self.assertIsNone(_extract_page_token(g))
+
+    def test_grpc_path_extracts_token(self):
+        """Simulates the gRPC path with log_iter whose inner frame has 'self'."""
+        mock_pager = MagicMock()
+        mock_pager._response.next_page_token = 'token-abc'
+
+        # The inner generator must use 'self' as a local variable name
+        # so _extract_page_token finds it via inner_frame.f_locals['self']
+        def inner_gen():
+            self = mock_pager  # noqa: F841
+            yield 'entry'
+            yield 'entry2'
+
+        def outer_gen():
+            log_iter = inner_gen()
+            for item in log_iter:
+                yield item
+
+        g = outer_gen()
+        next(g)
+        result = _extract_page_token(g)
+        self.assertEqual(result, 'token-abc')
+
+    def test_grpc_path_returns_none_for_empty_token(self):
+        """gRPC path returns None when next_page_token is empty string."""
+        mock_pager = MagicMock()
+        mock_pager._response.next_page_token = ''
+
+        def inner_gen():
+            self = mock_pager  # noqa: F841
+            yield 'entry'
+            yield 'entry2'
+
+        def outer_gen():
+            log_iter = inner_gen()
+            for item in log_iter:
+                yield item
+
+        g = outer_gen()
+        next(g)
+        result = _extract_page_token(g)
+        self.assertIsNone(result)
+
+    def test_http_path_extracts_token(self):
+        """Simulates the HTTP path with page_iter in frame locals."""
+        mock_page_iter = MagicMock()
+        mock_page_iter.next_page_token = 'http-token-123'
+
+        def outer_gen():
+            page_iter = mock_page_iter  # noqa: F841
+            for i in range(3):
+                yield i
+
+        g = outer_gen()
+        next(g)
+        result = _extract_page_token(g)
+        self.assertEqual(result, 'http-token-123')
