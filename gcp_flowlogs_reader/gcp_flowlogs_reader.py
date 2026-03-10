@@ -70,11 +70,9 @@ def page_helper(logging_client, wait_time=1.0, **kwargs):
         kwargs['page_token'] = None
         while True:
             try:
-                entry_num = 0
                 iterator = logging_client.list_entries(**kwargs)
                 for entry in iterator:
-                    token = _extract_page_token(iterator)
-                    kwargs['page_token'] = token
+                    kwargs['page_token'] = _extract_page_token(iterator)
                     yield entry
                 break
             except TooManyRequests:
@@ -245,7 +243,7 @@ class Reader:
         logging_client=None,
         service_account_json=None,
         service_account_info=None,
-        page_size=2,
+        page_size=1000,
         wait_time=1.0,
         **kwargs,
     ):

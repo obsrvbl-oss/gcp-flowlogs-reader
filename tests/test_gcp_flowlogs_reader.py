@@ -230,7 +230,8 @@ class V3PageHelperTests(TestCase):
         iterator = page_helper(logging_client=MockLoggingClient(), projects=['proj1'])
         self.assertEqual(list(iterator), SAMPLE_ENTRIES)
         MockLoggingClient.return_value.list_entries.assert_called_with(
-            resource_names=['projects/proj1']
+            resource_names=['projects/proj1'],
+            page_token=None,
         )
 
     @patch(PREFIX('gcp_logging_version'), '3.0.0')
@@ -250,25 +251,42 @@ class V3PageHelperTests(TestCase):
 
     @patch(PREFIX('gcp_logging_version'), '3.0.0')
     @patch(PREFIX('sleep'), autospec=True)
-    def test_too_many_requests_mid_stream_skips_already_yielded(self, mock_sleep):
+    def test_too_many_requests_mid_stream_resumes_with_page_token(self, mock_sleep):
+        """After a mid-stream 429, retry uses page_token to resume."""
+        saved_token = 'page-token-after-entry-0'
+
         class FailingAfterOneEntry:
             def __iter__(self):
                 yield SAMPLE_ENTRIES[0]
                 raise TooManyRequests('rate limited')
 
         mock_logging_client = MagicMock()
-        mock_logging_client.list_entries.side_effect = [
-            FailingAfterOneEntry(),
-            iter(SAMPLE_ENTRIES),
-        ]
 
-        iterator = page_helper(logging_client=mock_logging_client, projects=['proj1'])
-        results = list(iterator)
-        # first call yields SAMPLE_ENTRIES[0], then TooManyRequests;
-        # retry replays all entries but skips the 1 already yielded
-        self.assertEqual(results, [SAMPLE_ENTRIES[0]] + SAMPLE_ENTRIES[1:])
+        def list_entries_side_effect(**kwargs):
+            token = kwargs.get('page_token')
+            if token is None:
+                return FailingAfterOneEntry()
+            elif token == saved_token:
+                # Resume from where we left off
+                return iter(SAMPLE_ENTRIES[1:])
+            return iter([])
+
+        mock_logging_client.list_entries.side_effect = list_entries_side_effect
+
+        with patch(PREFIX('_extract_page_token'), return_value=saved_token):
+            iterator = page_helper(
+                logging_client=mock_logging_client, projects=['proj1']
+            )
+            results = list(iterator)
+
+        # First call yields SAMPLE_ENTRIES[0], then TooManyRequests;
+        # retry uses saved page_token and returns remaining entries
+        self.assertEqual(results, list(SAMPLE_ENTRIES))
 
         self.assertEqual(mock_logging_client.list_entries.call_count, 2)
+        # Verify the retry call used the page_token
+        retry_call_kwargs = mock_logging_client.list_entries.call_args_list[1][1]
+        self.assertEqual(retry_call_kwargs['page_token'], saved_token)
         mock_sleep.assert_called_once_with(1.0)
 
 
