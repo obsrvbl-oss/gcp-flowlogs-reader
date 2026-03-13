@@ -31,8 +31,12 @@ BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
 def _extract_page_token(iterator):
     """Extract the current page token from a v3 list_entries generator.
 
-    Reaches into generator frame locals to read the page token from the
-    underlying pager. Supports both gRPC and HTTP transport paths.
+    google-cloud-logging 3.0+ replaced the HTTPIterator (which had a
+    public next_page_token) with a plain generator that hides pagination
+    state.  We need the token to resume after 429s, so we reach into
+    gi_frame.f_locals to read it from the SDK's internal gRPC pager
+    (log_iter) or HTTP pager (page_iter).  Fragile but least-bad;
+    silently returns None if SDK internals change.
     """
     try:
         frame = iterator.gi_frame
