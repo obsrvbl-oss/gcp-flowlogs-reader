@@ -28,6 +28,39 @@ from google.oauth2.service_account import Credentials
 BASE_LOG_NAME = 'projects/{}/logs/compute.googleapis.com%2Fvpc_flows'
 
 
+def _extract_page_token(iterator):
+    """Extract the current page token from a v3 list_entries generator.
+
+    google-cloud-logging 3.0+ replaced the HTTPIterator (which had a
+    public next_page_token) with a plain generator that hides pagination
+    state.  We need the token to resume after 429s, so we reach into
+    gi_frame.f_locals to read it from the SDK's internal gRPC pager
+    (log_iter) or HTTP pager (page_iter).  Fragile but least-bad;
+    silently returns None if SDK internals change.
+    """
+    try:
+        frame = iterator.gi_frame
+        if frame is None:
+            return None
+        locals_ = frame.f_locals
+
+        # gRPC path: log_entries_pager(log_iter)
+        if 'log_iter' in locals_:
+            inner_frame = locals_['log_iter'].gi_frame
+            if inner_frame is not None:
+                pager = inner_frame.f_locals.get('self')
+                if pager is not None:
+                    return pager._response.next_page_token or None
+
+        # HTTP path: _entries_pager(page_iter)
+        if 'page_iter' in locals_:
+            return locals_['page_iter'].next_page_token
+    except (AttributeError, KeyError):
+        pass
+
+    return None
+
+
 def page_helper(logging_client, wait_time=1.0, **kwargs):
     # handle google-cloud-logging >= 3.0
     if gcp_logging_version[0] == '3':
@@ -37,10 +70,18 @@ def page_helper(logging_client, wait_time=1.0, **kwargs):
                 f'projects/{project}' for project in kwargs['projects']
             ]
             del kwargs['projects']
-        # google-cloud-logging >= 3.0 handles paging internally
-        iterator = logging_client.list_entries(**kwargs)
-        for entry in iterator:
-            yield entry
+
+        kwargs['page_token'] = None
+        while True:
+            try:
+                iterator = logging_client.list_entries(**kwargs)
+                for entry in iterator:
+                    kwargs['page_token'] = _extract_page_token(iterator)
+                    yield entry
+                break
+            except TooManyRequests:
+                sleep(wait_time)
+
         return
 
     # google-cloud-logging < 3.0 requires us to handle paging

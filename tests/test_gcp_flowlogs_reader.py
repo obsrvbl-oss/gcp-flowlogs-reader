@@ -6,8 +6,17 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch, call
 from tempfile import NamedTemporaryFile
 
-from gcp_flowlogs_reader.gcp_flowlogs_reader import BASE_LOG_NAME, page_helper
-from google.api_core.exceptions import GoogleAPIError, PermissionDenied, NotFound
+from gcp_flowlogs_reader.gcp_flowlogs_reader import (
+    BASE_LOG_NAME,
+    page_helper,
+    _extract_page_token,
+)
+from google.api_core.exceptions import (
+    GoogleAPIError,
+    PermissionDenied,
+    NotFound,
+    TooManyRequests,
+)
 from google.cloud.logging import Client
 from google.cloud.logging import StructEntry, Resource
 from google.oauth2.service_account import Credentials
@@ -23,7 +32,6 @@ from gcp_flowlogs_reader import (
     ResourceLabels,
 )
 from gcp_flowlogs_reader.gcp_flowlogs_reader import safe_tuple_from_dict
-
 
 PREFIX = 'gcp_flowlogs_reader.gcp_flowlogs_reader.{}'.format
 SAMPLE_PAYLOADS = [
@@ -226,8 +234,64 @@ class V3PageHelperTests(TestCase):
         iterator = page_helper(logging_client=MockLoggingClient(), projects=['proj1'])
         self.assertEqual(list(iterator), SAMPLE_ENTRIES)
         MockLoggingClient.return_value.list_entries.assert_called_with(
-            resource_names=['projects/proj1']
+            resource_names=['projects/proj1'],
+            page_token=None,
         )
+
+    @patch(PREFIX('gcp_logging_version'), '3.0.0')
+    @patch(PREFIX('sleep'), autospec=True)
+    def test_too_many_requests_retry(self, mock_sleep):
+        mock_logging_client = MagicMock()
+        mock_logging_client.list_entries.side_effect = [
+            TooManyRequests('rate limited'),
+            iter(SAMPLE_ENTRIES),
+        ]
+
+        iterator = page_helper(logging_client=mock_logging_client, projects=['proj1'])
+        self.assertEqual(list(iterator), SAMPLE_ENTRIES)
+
+        self.assertEqual(mock_logging_client.list_entries.call_count, 2)
+        mock_sleep.assert_called_once_with(1.0)
+
+    @patch(PREFIX('gcp_logging_version'), '3.0.0')
+    @patch(PREFIX('sleep'), autospec=True)
+    def test_too_many_requests_mid_stream_resumes_with_page_token(self, mock_sleep):
+        """After a mid-stream 429, retry uses page_token to resume."""
+        saved_token = 'page-token-after-entry-0'
+
+        class FailingAfterOneEntry:
+            def __iter__(self):
+                yield SAMPLE_ENTRIES[0]
+                raise TooManyRequests('rate limited')
+
+        mock_logging_client = MagicMock()
+
+        def list_entries_side_effect(**kwargs):
+            token = kwargs.get('page_token')
+            if token is None:
+                return FailingAfterOneEntry()
+            elif token == saved_token:
+                # Resume from where we left off
+                return iter(SAMPLE_ENTRIES[1:])
+            return iter([])
+
+        mock_logging_client.list_entries.side_effect = list_entries_side_effect
+
+        with patch(PREFIX('_extract_page_token'), return_value=saved_token):
+            iterator = page_helper(
+                logging_client=mock_logging_client, projects=['proj1']
+            )
+            results = list(iterator)
+
+        # First call yields SAMPLE_ENTRIES[0], then TooManyRequests;
+        # retry uses saved page_token and returns remaining entries
+        self.assertEqual(results, list(SAMPLE_ENTRIES))
+
+        self.assertEqual(mock_logging_client.list_entries.call_count, 2)
+        # Verify the retry call used the page_token
+        retry_call_kwargs = mock_logging_client.list_entries.call_args_list[1][1]
+        self.assertEqual(retry_call_kwargs['page_token'], saved_token)
+        mock_sleep.assert_called_once_with(1.0)
 
 
 class FlowRecordTests(TestCase):
@@ -511,6 +575,25 @@ class ReaderTests(TestCase):
             projects=['yoyodyne-102010'],
             page_token=None,
         )
+
+    @patch(PREFIX('sleep'), autospec=True)
+    def test_iteration_retries_too_many_requests(self, mock_sleep, MockLoggingClient):
+        MockLoggingClient.return_value.project = 'yoyodyne-102010'
+        MockLoggingClient.return_value.list_entries.side_effect = [
+            TooManyRequests('rate limited'),
+            MockIterator(),
+        ]
+
+        earlier = datetime(2018, 4, 3, 9, 51, 22)
+        later = datetime(2018, 4, 3, 10, 51, 33)
+        reader = Reader(start_time=earlier, end_time=later, log_name='my_log')
+
+        actual = list(reader)
+        expected = [FlowRecord(x) for x in SAMPLE_ENTRIES]
+        self.assertEqual(actual, expected)
+
+        self.assertEqual(MockLoggingClient.return_value.list_entries.call_count, 2)
+        mock_sleep.assert_called_once_with(1.0)
 
     @patch(PREFIX('ResourceManagerClient'), autospec=True)
     @patch(PREFIX('Credentials'), autospec=True)
@@ -851,3 +934,72 @@ class MainCLITests(TestCase):
             )
         self.assertEqual(len(output.getvalue().splitlines()), 5)
         self.assertIn(call().list_projects(), MockResourceManagerClient.mock_calls)
+
+
+class ExtractPageTokenTests(TestCase):
+    def test_returns_none_for_exhausted_generator(self):
+        """An exhausted generator has gi_frame=None."""
+
+        def gen():
+            yield 1
+
+        g = gen()
+        list(g)  # exhaust it
+        self.assertIsNone(_extract_page_token(g))
+
+    def test_grpc_path_extracts_token(self):
+        """Simulates the gRPC path with log_iter whose inner frame has 'self'."""
+        mock_pager = MagicMock()
+        mock_pager._response.next_page_token = 'token-abc'
+
+        # The inner generator must use 'self' as a local variable name
+        # so _extract_page_token finds it via inner_frame.f_locals['self']
+        def inner_gen():
+            self = mock_pager  # noqa: F841
+            yield 'entry'
+            yield 'entry2'
+
+        def outer_gen():
+            log_iter = inner_gen()
+            for item in log_iter:
+                yield item
+
+        g = outer_gen()
+        next(g)
+        result = _extract_page_token(g)
+        self.assertEqual(result, 'token-abc')
+
+    def test_grpc_path_returns_none_for_empty_token(self):
+        """gRPC path returns None when next_page_token is empty string."""
+        mock_pager = MagicMock()
+        mock_pager._response.next_page_token = ''
+
+        def inner_gen():
+            self = mock_pager  # noqa: F841
+            yield 'entry'
+            yield 'entry2'
+
+        def outer_gen():
+            log_iter = inner_gen()
+            for item in log_iter:
+                yield item
+
+        g = outer_gen()
+        next(g)
+        result = _extract_page_token(g)
+        self.assertIsNone(result)
+
+    def test_http_path_extracts_token(self):
+        """Simulates the HTTP path with page_iter in frame locals."""
+        mock_page_iter = MagicMock()
+        mock_page_iter.next_page_token = 'http-token-123'
+
+        def outer_gen():
+            page_iter = mock_page_iter  # noqa: F841
+            for i in range(3):
+                yield i
+
+        g = outer_gen()
+        next(g)
+        result = _extract_page_token(g)
+        self.assertEqual(result, 'http-token-123')
